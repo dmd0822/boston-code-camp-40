@@ -22,12 +22,8 @@ param secrets array = []
 @description('The container registry server')
 param registryServer string
 
-@description('The container registry username')
-param registryUsername string
-
-@description('The container registry password')
-@secure()
-param registryPassword string
+@description('Resource ID of user-assigned managed identity for ACR pull')
+param userAssignedIdentityId string
 
 @description('CPU allocation for the container')
 param cpu string = '0.5'
@@ -48,6 +44,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   tags: tags
+  identity: {
+    type: 'SystemAssigned,UserAssigned'
+    userAssignedIdentities: {
+      '${userAssignedIdentityId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environmentId
     configuration: {
@@ -60,16 +62,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
       registries: [
         {
           server: registryServer
-          username: registryUsername
-          passwordSecretRef: 'registry-password'
+          identity: userAssignedIdentityId
         }
       ]
-      secrets: concat([
-        {
-          name: 'registry-password'
-          value: registryPassword
-        }
-      ], secrets)
+      secrets: secrets
     }
     template: {
       containers: [
@@ -112,3 +108,6 @@ output fqdn string = containerApp.properties.configuration.ingress.fqdn
 
 @description('The URL of the Container App')
 output url string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+
+@description('The principal ID of the system-assigned managed identity')
+output principalId string = containerApp.identity.principalId

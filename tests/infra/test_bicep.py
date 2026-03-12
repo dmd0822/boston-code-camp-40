@@ -88,10 +88,10 @@ class TestMainBicep:
         assert re.search(r"name:\s*['\"]AZURE_OPENAI_ENDPOINT['\"]", main_bicep_content), \
             "main.bicep should pass AZURE_OPENAI_ENDPOINT to backend"
 
-    def test_passes_azure_openai_api_key(self, main_bicep_content: str):
-        """Test that AZURE_OPENAI_API_KEY is passed to backend."""
-        assert re.search(r"name:\s*['\"]AZURE_OPENAI_API_KEY['\"]", main_bicep_content), \
-            "main.bicep should pass AZURE_OPENAI_API_KEY to backend"
+    def test_no_api_key_env_var(self, main_bicep_content: str):
+        """Test that AZURE_OPENAI_API_KEY is not passed (managed identity)."""
+        assert "AZURE_OPENAI_API_KEY" not in main_bicep_content, \
+            "main.bicep should not pass AZURE_OPENAI_API_KEY (uses managed identity)"
 
     def test_passes_azure_openai_deployment(self, main_bicep_content: str):
         """Test that AZURE_OPENAI_DEPLOYMENT is passed to backend."""
@@ -200,6 +200,39 @@ class TestContainerAppModule:
         assert "secrets:" in module_content, \
             "Module should configure secrets in resource"
 
+    def test_has_managed_identity(self, module_content: str):
+        """Test that module configures managed identity."""
+        assert "identity:" in module_content, \
+            "Module should have identity block"
+        assert "SystemAssigned" in module_content, \
+            "Module should use SystemAssigned identity"
+
+    def test_has_user_assigned_identity_param(self, module_content: str):
+        """Test that module has userAssignedIdentityId parameter."""
+        assert re.search(
+            r"param\s+userAssignedIdentityId\s+string", module_content
+        ), "Module should have userAssignedIdentityId parameter"
+
+    def test_no_registry_credentials(self, module_content: str):
+        """Test that module does not use registry credentials."""
+        assert "registryUsername" not in module_content, \
+            "Module should not have registryUsername parameter"
+        assert "registryPassword" not in module_content, \
+            "Module should not have registryPassword parameter"
+        assert "passwordSecretRef" not in module_content, \
+            "Module should not use passwordSecretRef for registry"
+
+    def test_registry_uses_identity(self, module_content: str):
+        """Test that registry pull uses managed identity."""
+        assert re.search(
+            r"identity:\s*userAssignedIdentityId", module_content
+        ), "Registry config should use identity-based pull"
+
+    def test_outputs_principal_id(self, module_content: str):
+        """Test that module outputs principalId for role assignments."""
+        assert re.search(r"output\s+principalId\s+string", module_content), \
+            "Module should output principalId"
+
     def test_has_output_declarations(self, module_content: str):
         """Test that module has output declarations."""
         assert re.search(r"output\s+\w+", module_content), \
@@ -234,10 +267,21 @@ class TestACRModule:
         assert "Microsoft.ContainerRegistry/registries" in module_content, \
             "Module should create Microsoft.ContainerRegistry/registries resource"
 
-    def test_has_admin_user_enabled(self, module_content: str):
-        """Test that adminUserEnabled is configured."""
-        assert "adminUserEnabled" in module_content, \
-            "Module should configure adminUserEnabled"
+    def test_admin_user_disabled(self, module_content: str):
+        """Test that adminUserEnabled is false (managed identity)."""
+        assert re.search(r"adminUserEnabled:\s*false", module_content), \
+            "Module should set adminUserEnabled: false"
+
+    def test_no_admin_credentials_output(self, module_content: str):
+        """Test that module does not output admin credentials."""
+        assert "listCredentials" not in module_content, \
+            "Module should not use listCredentials() (managed identity)"
+        assert "adminUsername" not in module_content or \
+            "output adminUsername" not in module_content, \
+            "Module should not output adminUsername"
+        assert "adminPassword" not in module_content or \
+            "output adminPassword" not in module_content, \
+            "Module should not output adminPassword"
 
     def test_has_output_declarations(self, module_content: str):
         """Test that module has output declarations."""
@@ -323,10 +367,18 @@ class TestAIFoundryModule:
         assert re.search(r"output\s+endpoint\s+string", module_content), \
             "Module should output endpoint"
 
-    def test_outputs_key(self, module_content: str):
-        """Test that module outputs API key with @secure()."""
-        assert re.search(r"@secure\(\)\s*output\s+key\s+string", module_content, re.MULTILINE), \
-            "Module should output key with @secure() decorator"
+    def test_disable_local_auth(self, module_content: str):
+        """Test that disableLocalAuth is true (managed identity)."""
+        assert re.search(r"disableLocalAuth:\s*true", module_content), \
+            "Module should set disableLocalAuth: true"
+
+    def test_no_key_output(self, module_content: str):
+        """Test that module does not output API key (managed identity)."""
+        assert not re.search(
+            r"output\s+key\s+string", module_content
+        ), "Module should not output key (uses managed identity)"
+        assert "listKeys" not in module_content, \
+            "Module should not use listKeys() (uses managed identity)"
 
     def test_outputs_deployment_name(self, module_content: str):
         """Test that module outputs deploymentName."""
@@ -406,10 +458,84 @@ class TestMainBicepFoundryIntegration:
         """Test that backend container app uses AI Foundry outputs."""
         assert "aiFoundry.outputs.endpoint" in main_bicep_content, \
             "Backend should use aiFoundry.outputs.endpoint"
-        assert "aiFoundry.outputs.key" in main_bicep_content, \
-            "Backend should use aiFoundry.outputs.key"
         assert "aiFoundry.outputs.deploymentName" in main_bicep_content, \
             "Backend should use aiFoundry.outputs.deploymentName"
+
+    def test_backend_no_api_key_from_foundry(self, main_bicep_content: str):
+        """Test that backend does not use API key from AI Foundry."""
+        assert "aiFoundry.outputs.key" not in main_bicep_content, \
+            "Backend should not use aiFoundry.outputs.key (managed identity)"
+
+
+class TestManagedIdentity:
+    """Tests for managed identity configuration in main.bicep."""
+
+    @pytest.fixture
+    def main_bicep_path(self) -> Path:
+        """Path to main.bicep file."""
+        return Path(__file__).parent.parent.parent / "infra" / "main.bicep"
+
+    @pytest.fixture
+    def main_bicep_content(self, main_bicep_path: Path) -> str:
+        """Read main.bicep content."""
+        return main_bicep_path.read_text()
+
+    def test_has_user_assigned_identity(self, main_bicep_content: str):
+        """Test that main.bicep creates a user-assigned managed identity."""
+        assert "Microsoft.ManagedIdentity/userAssignedIdentities" \
+            in main_bicep_content, \
+            "main.bicep should create a user-assigned managed identity"
+
+    def test_has_acr_pull_role_assignment(self, main_bicep_content: str):
+        """Test that main.bicep assigns AcrPull role."""
+        assert "7f951dda-4ed3-4680-a7ca-43fe172d538d" in main_bicep_content, \
+            "main.bicep should have AcrPull role definition ID"
+        assert "Microsoft.Authorization/roleAssignments" in main_bicep_content, \
+            "main.bicep should have role assignments"
+
+    def test_has_cognitive_services_role_assignment(
+        self, main_bicep_content: str
+    ):
+        """Test that backend gets Cognitive Services OpenAI User role."""
+        assert "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd" in main_bicep_content, \
+            "main.bicep should have Cognitive Services OpenAI User role ID"
+
+    def test_no_registry_credentials(self, main_bicep_content: str):
+        """Test that no registry credentials are passed to container apps."""
+        assert "registryUsername" not in main_bicep_content, \
+            "main.bicep should not pass registryUsername"
+        assert "registryPassword" not in main_bicep_content, \
+            "main.bicep should not pass registryPassword"
+        assert "adminUsername" not in main_bicep_content, \
+            "main.bicep should not reference adminUsername"
+        assert "adminPassword" not in main_bicep_content, \
+            "main.bicep should not reference adminPassword"
+
+    def test_no_api_key_secret(self, main_bicep_content: str):
+        """Test that no API key secrets are configured."""
+        assert "azure-openai-api-key" not in main_bicep_content, \
+            "main.bicep should not have azure-openai-api-key secret"
+
+    def test_passes_identity_to_container_apps(
+        self, main_bicep_content: str
+    ):
+        """Test that userAssignedIdentityId is passed to container apps."""
+        assert "userAssignedIdentityId:" in main_bicep_content, \
+            "main.bicep should pass userAssignedIdentityId to container apps"
+
+    def test_backend_depends_on_acr_role(self, main_bicep_content: str):
+        """Test that backend depends on AcrPull role assignment."""
+        assert re.search(
+            r"backend.*dependsOn.*acrPullRoleAssignment",
+            main_bicep_content, re.DOTALL
+        ), "Backend should depend on acrPullRoleAssignment"
+
+    def test_role_assignment_scoping(self, main_bicep_content: str):
+        """Test that role assignments are scoped to specific resources."""
+        assert "scope:" in main_bicep_content, \
+            "Role assignments should be scoped to specific resources"
+        assert "principalType: 'ServicePrincipal'" in main_bicep_content, \
+            "Role assignments should specify principalType"
 
 
 class TestParameterFiles:

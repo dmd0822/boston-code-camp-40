@@ -17,6 +17,19 @@ var tags = {
   environment: environmentName
 }
 
+// Well-known Azure role definition IDs
+var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+var cognitiveServicesOpenAIUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+
+// ========================================
+// User-Assigned Managed Identity (for ACR pull)
+// ========================================
+resource acrPullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${baseName}-acr-pull'
+  location: location
+  tags: tags
+}
+
 // ========================================
 // Module 1: Azure Container Registry
 // ========================================
@@ -28,6 +41,24 @@ module acr 'modules/acr.bicep' = {
     skuName: 'Basic'
     tags: tags
   }
+}
+
+// ========================================
+// Role: AcrPull for the managed identity on ACR
+// ========================================
+resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.outputs.id, acrPullIdentity.id, acrPullRoleId)
+  scope: acrResource
+  properties: {
+    roleDefinitionId: acrPullRoleId
+    principalId: acrPullIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Reference the ACR resource for scoping the role assignment
+resource acrResource 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: replace('${baseName}-acr', '-', '')
 }
 
 // ========================================
@@ -64,6 +95,7 @@ module aiFoundry 'modules/ai-foundry.bicep' = {
 // ========================================
 module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
+  dependsOn: [acrPullRoleAssignment]
   params: {
     name: '${baseName}-backend'
     location: location
@@ -71,26 +103,16 @@ module backendApp 'modules/container-app.bicep' = {
     containerImage: '${acr.outputs.loginServer}/travel-agent-backend:${appVersion}'
     targetPort: 8000
     registryServer: acr.outputs.loginServer
-    registryUsername: acr.outputs.adminUsername
-    registryPassword: acr.outputs.adminPassword
+    userAssignedIdentityId: acrPullIdentity.id
     cpu: '0.5'
     memory: '1Gi'
     minReplicas: 0
     maxReplicas: 3
-    secrets: [
-      {
-        name: 'azure-openai-api-key'
-        value: aiFoundry.outputs.key
-      }
-    ]
+    secrets: []
     env: [
       {
         name: 'AZURE_OPENAI_ENDPOINT'
         value: aiFoundry.outputs.endpoint
-      }
-      {
-        name: 'AZURE_OPENAI_API_KEY'
-        secretRef: 'azure-openai-api-key'
       }
       {
         name: 'AZURE_OPENAI_DEPLOYMENT'
@@ -106,10 +128,29 @@ module backendApp 'modules/container-app.bicep' = {
 }
 
 // ========================================
+// Role: Cognitive Services OpenAI User for backend on AI Foundry
+// ========================================
+resource backendAIRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiFoundry.outputs.id, backendApp.outputs.id, cognitiveServicesOpenAIUserRoleId)
+  scope: aiFoundryResource
+  properties: {
+    roleDefinitionId: cognitiveServicesOpenAIUserRoleId
+    principalId: backendApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Reference the AI Foundry account for scoping the role assignment
+resource aiFoundryResource 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
+  name: '${baseName}-ai'
+}
+
+// ========================================
 // Module 5: Frontend Container App
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
+  dependsOn: [acrPullRoleAssignment]
   params: {
     name: '${baseName}-frontend'
     location: location
@@ -117,8 +158,7 @@ module frontendApp 'modules/container-app.bicep' = {
     containerImage: '${acr.outputs.loginServer}/travel-agent-frontend:${appVersion}'
     targetPort: 80
     registryServer: acr.outputs.loginServer
-    registryUsername: acr.outputs.adminUsername
-    registryPassword: acr.outputs.adminPassword
+    userAssignedIdentityId: acrPullIdentity.id
     cpu: '0.25'
     memory: '0.5Gi'
     minReplicas: 0

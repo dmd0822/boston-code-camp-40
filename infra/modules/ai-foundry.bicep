@@ -40,7 +40,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   properties: {
     allowProjectManagement: true
     customSubDomainName: name
-    disableLocalAuth: false
+    disableLocalAuth: true
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -81,10 +81,6 @@ output name string = aiFoundry.name
 
 @description('The endpoint URL for the AI Foundry account')
 output endpoint string = aiFoundry.properties.endpoint
-
-@description('The API key for the AI Foundry account')
-@secure()
-output key string = aiFoundry.listKeys().key1
 
 @description('The name of the model deployment')
 output deploymentName string = modelDeployment.name
