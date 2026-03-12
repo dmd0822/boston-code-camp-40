@@ -7,9 +7,6 @@ param location string = resourceGroup().location
 @description('The version of the GPT-4o model to deploy')
 param openaiModelVersion string = '2024-05-13'
 
-@description('The version tag for the application')
-param appVersion string = '0.1.0'
-
 // Resource naming convention: travel-agent-{environmentName}-{resource}
 var baseName = 'travel-agent-${environmentName}'
 var tags = {
@@ -100,7 +97,6 @@ module backendApp 'modules/container-app.bicep' = {
     name: '${baseName}-backend'
     location: location
     environmentId: containerAppEnv.outputs.id
-    containerImage: '${acr.outputs.loginServer}/travel-agent-backend:${appVersion}'
     targetPort: 8000
     registryServer: acr.outputs.loginServer
     userAssignedIdentityId: acrPullIdentity.id
@@ -117,10 +113,6 @@ module backendApp 'modules/container-app.bicep' = {
       {
         name: 'AZURE_OPENAI_DEPLOYMENT'
         value: aiFoundry.outputs.deploymentName
-      }
-      {
-        name: 'APP_VERSION'
-        value: appVersion
       }
     ]
     tags: tags
@@ -155,7 +147,6 @@ module frontendApp 'modules/container-app.bicep' = {
     name: '${baseName}-frontend'
     location: location
     environmentId: containerAppEnv.outputs.id
-    containerImage: '${acr.outputs.loginServer}/travel-agent-frontend:${appVersion}'
     targetPort: 80
     registryServer: acr.outputs.loginServer
     userAssignedIdentityId: acrPullIdentity.id

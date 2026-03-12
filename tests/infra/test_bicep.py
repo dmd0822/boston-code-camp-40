@@ -233,6 +233,27 @@ class TestContainerAppModule:
         assert re.search(r"output\s+principalId\s+string", module_content), \
             "Module should output principalId"
 
+    def test_container_image_optional(self, module_content: str):
+        """Test that containerImage param defaults to empty string."""
+        assert re.search(
+            r"param\s+containerImage\s+string\s*=\s*''", module_content
+        ), "containerImage should default to empty string"
+
+    def test_uses_placeholder_when_no_image(self, module_content: str):
+        """Test that a placeholder image is used when no image specified."""
+        assert "mcr.microsoft.com" in module_content, \
+            "Module should use an MCR placeholder image as fallback"
+
+    def test_no_specific_app_image_in_main(self):
+        """Test that main.bicep does not specify container images from ACR."""
+        main_content = (
+            Path(__file__).parent.parent.parent / "infra" / "main.bicep"
+        ).read_text()
+        assert "containerImage:" not in main_content, \
+            "main.bicep should not pass containerImage (handled by app workflow)"
+        assert "appVersion" not in main_content, \
+            "main.bicep should not reference appVersion"
+
     def test_has_output_declarations(self, module_content: str):
         """Test that module has output declarations."""
         assert re.search(r"output\s+\w+", module_content), \

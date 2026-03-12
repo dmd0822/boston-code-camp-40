@@ -7,8 +7,8 @@ param location string = resourceGroup().location
 @description('The resource ID of the Container Apps environment')
 param environmentId string
 
-@description('The container image to deploy')
-param containerImage string
+@description('The container image to deploy (empty uses a placeholder)')
+param containerImage string = ''
 
 @description('The target port for the container')
 param targetPort int
@@ -39,6 +39,9 @@ param maxReplicas int = 3
 
 @description('Tags to apply to the resource')
 param tags object = {}
+
+// Use a lightweight public placeholder when no app image is specified
+var effectiveImage = !empty(containerImage) ? containerImage : 'mcr.microsoft.com/k8se/quickstart:latest'
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
@@ -71,7 +74,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
       containers: [
         {
           name: name
-          image: containerImage
+          image: effectiveImage
           resources: {
             cpu: json(cpu)
             memory: memory
