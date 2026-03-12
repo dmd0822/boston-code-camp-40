@@ -1,6 +1,9 @@
 # Travel Agent Application
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Backend Tests](https://img.shields.io/badge/backend_tests-107_passing-brightgreen)](tests/)
+[![Frontend Tests](https://img.shields.io/badge/frontend_tests-66_passing-brightgreen)](frontend/)
+[![Total Tests](https://img.shields.io/badge/total_tests-173_passing-brightgreen)](#running-tests)
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
