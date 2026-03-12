@@ -13,6 +13,7 @@ from typing import List, Optional
 
 from agent_framework import Agent
 from agent_framework_azure_ai import AzureAIClient
+from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
 
 from src.api.models.customer import CustomerProfile
@@ -41,6 +42,10 @@ def _load_system_prompt() -> str:
 def create_general_agent(settings: Settings) -> Agent:
     """Create and configure the General Agent.
 
+    Uses DefaultAzureCredential for authentication. Locally,
+    run ``az login`` first. In Azure, managed identity is
+    used automatically.
+
     Args:
         settings: Application settings with Azure OpenAI config.
 
@@ -48,41 +53,36 @@ def create_general_agent(settings: Settings) -> Agent:
         Configured Agent instance ready to recommend destinations.
 
     Raises:
-        ValueError: If Azure OpenAI credentials are not configured.
+        ValueError: If Azure OpenAI endpoint/deployment missing.
     """
     if not all(
         [
             settings.AZURE_OPENAI_ENDPOINT,
-            settings.AZURE_OPENAI_API_KEY,
             settings.AZURE_OPENAI_DEPLOYMENT,
         ]
     ):
         raise ValueError(
-            "Azure OpenAI credentials not configured. Set "
-            "AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and "
+            "Azure OpenAI not configured. Set "
+            "AZURE_OPENAI_ENDPOINT and "
             "AZURE_OPENAI_DEPLOYMENT."
         )
 
-    # Create Azure OpenAI client
+    # Authenticate via Azure Identity (az login / managed identity)
+    credential = DefaultAzureCredential()
+
     client = AzureAIClient(
         endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        api_key=settings.AZURE_OPENAI_API_KEY,
+        credential=credential,
         deployment=settings.AZURE_OPENAI_DEPLOYMENT,
     )
 
-    # Load system prompt
     instructions = _load_system_prompt()
 
-    # Import search tool
-    from src.agents.tools.web_search import search_web
-
-    # Create agent with search tool
     agent = Agent(
         client=client,
         instructions=instructions,
         name="general-agent",
         description="Destination matching agent",
-        tools=[search_web],
     )
 
     return agent

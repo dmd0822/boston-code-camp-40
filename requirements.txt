@@ -37,3 +37,6 @@ pydantic-settings
 
 # HTTP client
 httpx
+
+# Azure Identity (for DefaultAzureCredential)
+azure-identity

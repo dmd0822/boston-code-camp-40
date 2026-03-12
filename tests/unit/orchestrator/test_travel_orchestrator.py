@@ -39,10 +39,7 @@ def orchestrator_settings() -> Settings:
     """Return a Settings instance for orchestrator tests."""
     return Settings(
         AZURE_OPENAI_ENDPOINT="https://test.openai.azure.com/",
-        AZURE_OPENAI_API_KEY="test-key",
         AZURE_OPENAI_DEPLOYMENT="gpt-4o",
-        BING_SEARCH_API_KEY="test-bing-key",
-        BING_SEARCH_ENDPOINT="https://api.bing.microsoft.com",
     )
 
 

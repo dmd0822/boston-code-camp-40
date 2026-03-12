@@ -91,7 +91,7 @@ class TestWeatherAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_weather_agent_response)
 
-        with patch("src.agents.weather_agent.AzureAIClient"):
+        with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -143,7 +143,7 @@ class TestWeatherAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_weather_agent_response)
 
-        with patch("src.agents.weather_agent.AzureAIClient"):
+        with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -207,7 +207,7 @@ class TestWeatherAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_weather_agent_response)
 
-        with patch("src.agents.weather_agent.AzureAIClient"):
+        with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -258,7 +258,7 @@ class TestWeatherAgent:
         mock_response = MagicMock()
         mock_response.content = "null"
 
-        with patch("src.agents.weather_agent.AzureAIClient"):
+        with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -305,7 +305,7 @@ class TestWeatherAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_weather_agent_response)
 
-        with patch("src.agents.weather_agent.AzureAIClient"):
+        with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(

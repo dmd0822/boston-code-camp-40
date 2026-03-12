@@ -154,12 +154,7 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> None:
         "AZURE_OPENAI_ENDPOINT": (
             "https://test.openai.azure.com/"
         ),
-        "AZURE_OPENAI_API_KEY": "test-openai-key-000",
         "AZURE_OPENAI_DEPLOYMENT": "gpt-4o",
-        "BING_SEARCH_API_KEY": "test-bing-key-000",
-        "BING_SEARCH_ENDPOINT": (
-            "https://api.bing.microsoft.com/"
-        ),
     }
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)

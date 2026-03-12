@@ -3,15 +3,17 @@
 This tool wraps the Bing Web Search API to provide factual
 grounding for all agents. It handles API errors gracefully and
 returns structured search results.
+
+Bing Search is optional — when credentials are absent the tool
+returns an empty list so agents can still function without it.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, Dict, List
 
 import httpx
 from agent_framework import tool
-
-from src.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,6 @@ class SearchResult(Dict[str, Any]):
 @tool
 async def search_web(
     query: str,
-    settings: Optional[Settings] = None,
     max_results: int = 5,
 ) -> List[SearchResult]:
     """Search the web using Bing Web Search API.
@@ -34,9 +35,11 @@ async def search_web(
     the Bing API and returns structured results that agents can
     cite in their responses.
 
+    Credentials are read from environment variables so the tool
+    works independently of the application Settings model.
+
     Args:
         query: Search query string.
-        settings: Application settings (injected by agent).
         max_results: Maximum number of results to return.
 
     Returns:
@@ -44,20 +47,19 @@ async def search_web(
         Returns empty list if API credentials are missing or on
         error.
     """
-    if settings is None:
-        from src.config.settings import get_settings
+    api_key = os.environ.get("BING_SEARCH_API_KEY", "")
+    endpoint = os.environ.get(
+        "BING_SEARCH_ENDPOINT", "https://api.bing.microsoft.com/"
+    )
 
-        settings = get_settings()
-
-    # Handle missing credentials gracefully
-    if not settings.BING_SEARCH_API_KEY or not settings.BING_SEARCH_ENDPOINT:
+    if not api_key:
         logger.warning(
             "Bing Search API credentials not configured. "
             "Returning empty results."
         )
         return []
 
-    headers = {"Ocp-Apim-Subscription-Key": settings.BING_SEARCH_API_KEY}
+    headers = {"Ocp-Apim-Subscription-Key": api_key}
     params = {
         "q": query,
         "count": max_results,
@@ -67,7 +69,7 @@ async def search_web(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{settings.BING_SEARCH_ENDPOINT}/v7.0/search",
+                f"{endpoint.rstrip('/')}/v7.0/search",
                 headers=headers,
                 params=params,
             )
@@ -89,8 +91,8 @@ async def search_web(
                 )
 
             logger.info(
-                f"Web search for '{query}' returned {len(results)} "
-                f"results"
+                f"Web search for '{query}' returned "
+                f"{len(results)} results"
             )
             return results
 
@@ -112,5 +114,7 @@ async def search_web(
             )
         return []
     except Exception as e:
-        logger.error(f"Unexpected error searching for '{query}': {e}")
+        logger.error(
+            f"Unexpected error searching for '{query}': {e}"
+        )
         return []

@@ -78,27 +78,29 @@ class TestGeneralAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_general_agent_response)
 
-        with patch("src.agents.general_agent.AzureAIClient"):
-            with patch("src.agents.general_agent.Agent") as MockAgent:
-                mock_agent_instance = MagicMock()
-                mock_agent_instance.run = AsyncMock(
-                    return_value=mock_response
-                )
-                MockAgent.return_value = mock_agent_instance
-
-                with patch(
-                    "src.agents.general_agent._load_system_prompt",
-                    return_value="system prompt",
-                ):
-                    destinations = await recommend_destinations(
-                        profile, settings
+        with patch("src.agents.general_agent.DefaultAzureCredential"):
+            with patch("src.agents.general_agent.AzureAIClient"):
+                with patch("src.agents.general_agent.Agent") as MockAgent:
+                    mock_agent_instance = MagicMock()
+                    mock_agent_instance.run = AsyncMock(
+                        return_value=mock_response
                     )
+                    MockAgent.return_value = mock_agent_instance
 
-                    assert isinstance(destinations, list)
-                    assert 3 <= len(destinations) <= 4
-                    assert all(
-                        isinstance(d, Destination) for d in destinations
-                    )
+                    with patch(
+                        "src.agents.general_agent._load_system_prompt",
+                        return_value="system prompt",
+                    ):
+                        destinations = await recommend_destinations(
+                            profile, settings
+                        )
+
+                        assert isinstance(destinations, list)
+                        assert 3 <= len(destinations) <= 4
+                        assert all(
+                            isinstance(d, Destination)
+                            for d in destinations
+                        )
 
     @pytest.mark.asyncio
     async def test_verifies_search_web_tool_was_called(
@@ -126,24 +128,29 @@ class TestGeneralAgent:
         ) as mock_search:
             mock_search.return_value = mock_search_results
 
-            with patch("src.agents.general_agent.AzureAIClient"):
-                with patch(
-                    "src.agents.general_agent.Agent"
-                ) as MockAgent:
-                    mock_agent_instance = MagicMock()
-                    mock_agent_instance.run = AsyncMock(
-                        return_value=mock_response
-                    )
-                    MockAgent.return_value = mock_agent_instance
-
+            with patch("src.agents.general_agent.DefaultAzureCredential"):
+                with patch("src.agents.general_agent.AzureAIClient"):
                     with patch(
-                        "src.agents.general_agent._load_system_prompt",
-                        return_value="system prompt",
-                    ):
-                        await recommend_destinations(profile, settings)
+                        "src.agents.general_agent.Agent"
+                    ) as MockAgent:
+                        mock_agent_instance = MagicMock()
+                        mock_agent_instance.run = AsyncMock(
+                            return_value=mock_response
+                        )
+                        MockAgent.return_value = mock_agent_instance
 
-                        # Verify agent.run was called
-                        assert mock_agent_instance.run.call_count >= 1
+                        with patch(
+                            "src.agents.general_agent._load_system_prompt",
+                            return_value="system prompt",
+                        ):
+                            await recommend_destinations(
+                                profile, settings
+                            )
+
+                            assert (
+                                mock_agent_instance.run.call_count
+                                >= 1
+                            )
 
     @pytest.mark.asyncio
     async def test_returns_valid_destination_objects(
@@ -166,7 +173,7 @@ class TestGeneralAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_general_agent_response)
 
-        with patch("src.agents.general_agent.AzureAIClient"):
+        with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -220,7 +227,7 @@ class TestGeneralAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_general_agent_response)
 
-        with patch("src.agents.general_agent.AzureAIClient"):
+        with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -291,7 +298,7 @@ class TestGeneralAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_general_agent_response)
 
-        with patch("src.agents.general_agent.AzureAIClient"):
+        with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(

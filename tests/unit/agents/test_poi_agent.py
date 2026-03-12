@@ -90,7 +90,7 @@ class TestPOIAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_poi_agent_response)
 
-        with patch("src.agents.poi_agent.AzureAIClient"):
+        with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -141,7 +141,7 @@ class TestPOIAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_poi_agent_response)
 
-        with patch("src.agents.poi_agent.AzureAIClient"):
+        with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -190,7 +190,7 @@ class TestPOIAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps([])
 
-        with patch("src.agents.poi_agent.AzureAIClient"):
+        with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -238,7 +238,7 @@ class TestPOIAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_poi_agent_response)
 
-        with patch("src.agents.poi_agent.AzureAIClient"):
+        with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(

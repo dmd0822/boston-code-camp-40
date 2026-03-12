@@ -13,8 +13,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import httpx
 import pytest
 
-from src.config.settings import Settings
-
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -48,6 +46,16 @@ def mock_empty_bing_response() -> Dict[str, Any]:
     return {"webPages": {"value": []}}
 
 
+@pytest.fixture()
+def bing_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set Bing Search env vars for tests that need them."""
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "test-bing-key-000")
+    monkeypatch.setenv(
+        "BING_SEARCH_ENDPOINT",
+        "https://api.bing.microsoft.com/",
+    )
+
+
 # ------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------
@@ -59,7 +67,7 @@ class TestWebSearchTool:
     @pytest.mark.asyncio
     async def test_successful_search_returns_structured_results(
         self,
-        mock_settings: None,
+        bing_env: None,
         mock_bing_api_response: Dict[str, Any],
     ) -> None:
         """Verify search_web returns list of dicts with required keys.
@@ -69,21 +77,23 @@ class TestWebSearchTool:
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
-        settings = Settings()
-
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json = Mock(return_value=mock_bing_api_response)
+            mock_response.json = Mock(
+                return_value=mock_bing_api_response
+            )
             mock_response.raise_for_status = Mock()
 
             mock_client = MagicMock()
             mock_client.get = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client.__aexit__ = AsyncMock(return_value=None)
             MockAsyncClient.return_value = mock_client
 
-            results = await search_web("Lisbon travel", settings)
+            results = await search_web("Lisbon travel")
 
             assert isinstance(results, list)
             assert len(results) == 2
@@ -92,7 +102,9 @@ class TestWebSearchTool:
                 for r in results
             )
             assert results[0]["title"] == "Lisbon Travel Guide"
-            assert results[0]["url"] == "https://example.com/lisbon"
+            assert results[0]["url"] == (
+                "https://example.com/lisbon"
+            )
 
     @pytest.mark.asyncio
     async def test_handles_missing_api_key_gracefully(
@@ -108,19 +120,13 @@ class TestWebSearchTool:
         from src.agents.tools.web_search import search_web
 
         monkeypatch.setenv("BING_SEARCH_API_KEY", "")
-        monkeypatch.setenv(
-            "BING_SEARCH_ENDPOINT",
-            "https://api.bing.microsoft.com/",
-        )
-        settings = Settings()
 
-        # Should return empty list when credentials missing
-        results = await search_web("test query", settings)
+        results = await search_web("test query")
         assert results == []
 
     @pytest.mark.asyncio
     async def test_handles_api_timeout(
-        self, mock_settings: None
+        self, bing_env: None
     ) -> None:
         """Verify search_web handles network timeout errors.
 
@@ -129,24 +135,26 @@ class TestWebSearchTool:
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
-        settings = Settings()
-
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_client = MagicMock()
             mock_client.get = AsyncMock(
-                side_effect=httpx.TimeoutException("Request timed out")
+                side_effect=httpx.TimeoutException(
+                    "Request timed out"
+                )
             )
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client.__aexit__ = AsyncMock(return_value=None)
             MockAsyncClient.return_value = mock_client
 
-            results = await search_web("test query", settings)
+            results = await search_web("test query")
             assert results == []
 
     @pytest.mark.asyncio
     async def test_handles_empty_search_results(
         self,
-        mock_settings: None,
+        bing_env: None,
         mock_empty_bing_response: Dict[str, Any],
     ) -> None:
         """Verify search_web returns empty list when no results found.
@@ -157,27 +165,28 @@ class TestWebSearchTool:
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
-        settings = Settings()
-
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json = Mock(return_value=mock_empty_bing_response)
+            mock_response.json = Mock(
+                return_value=mock_empty_bing_response
+            )
             mock_response.raise_for_status = Mock()
 
             mock_client = MagicMock()
             mock_client.get = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client.__aexit__ = AsyncMock(return_value=None)
             MockAsyncClient.return_value = mock_client
 
-            results = await search_web("xyznonexistentquery123", settings)
-
+            results = await search_web("xyznonexistentquery123")
             assert results == []
 
     @pytest.mark.asyncio
     async def test_handles_http_error_responses(
-        self, mock_settings: None
+        self, bing_env: None
     ) -> None:
         """Verify search_web handles HTTP errors (429, 500, etc).
 
@@ -187,9 +196,6 @@ class TestWebSearchTool:
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
-        settings = Settings()
-
-        # Test 429 Rate Limit
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_response = MagicMock()
             mock_response.status_code = 429
@@ -203,47 +209,51 @@ class TestWebSearchTool:
 
             mock_client = MagicMock()
             mock_client.get = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client.__aexit__ = AsyncMock(return_value=None)
             MockAsyncClient.return_value = mock_client
 
-            results = await search_web("test query", settings)
+            results = await search_web("test query")
             assert results == []
 
     @pytest.mark.asyncio
     async def test_validates_result_structure(
         self,
-        mock_settings: None,
+        bing_env: None,
         mock_bing_api_response: Dict[str, Any],
     ) -> None:
-        """Verify each result has required fields: title, url, snippet.
+        """Verify each result has required fields.
 
-        The contract guarantees downstream agents can rely on these
-        fields being present.
+        The contract guarantees downstream agents can rely on
+        title, url, and snippet being present.
         """
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
-        settings = Settings()
-
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json = Mock(return_value=mock_bing_api_response)
+            mock_response.json = Mock(
+                return_value=mock_bing_api_response
+            )
             mock_response.raise_for_status = Mock()
 
             mock_client = MagicMock()
             mock_client.get = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client.__aexit__ = AsyncMock(return_value=None)
             MockAsyncClient.return_value = mock_client
 
-            results = await search_web("Lisbon", settings)
+            results = await search_web("Lisbon")
 
             for result in results:
-                assert "title" in result, "Missing 'title' field"
-                assert "url" in result, "Missing 'url' field"
-                assert "snippet" in result, "Missing 'snippet' field"
+                assert "title" in result
+                assert "url" in result
+                assert "snippet" in result
                 assert isinstance(result["title"], str)
                 assert isinstance(result["url"], str)
                 assert isinstance(result["snippet"], str)

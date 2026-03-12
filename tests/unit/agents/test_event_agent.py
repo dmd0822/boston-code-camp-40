@@ -90,7 +90,7 @@ class TestEventAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_event_agent_response)
 
-        with patch("src.agents.event_agent.AzureAIClient"):
+        with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -140,7 +140,7 @@ class TestEventAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps([])
 
-        with patch("src.agents.event_agent.AzureAIClient"):
+        with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -186,7 +186,7 @@ class TestEventAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_event_agent_response)
 
-        with patch("src.agents.event_agent.AzureAIClient"):
+        with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -237,7 +237,7 @@ class TestEventAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps(mock_event_agent_response)
 
-        with patch("src.agents.event_agent.AzureAIClient"):
+        with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(
@@ -290,7 +290,7 @@ class TestEventAgent:
         mock_response = MagicMock()
         mock_response.content = json.dumps([])
 
-        with patch("src.agents.event_agent.AzureAIClient"):
+        with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
                 mock_agent_instance = MagicMock()
                 mock_agent_instance.run = AsyncMock(

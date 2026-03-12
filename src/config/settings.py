@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     Reads from environment variables (or a `.env` file when
     present). Validated at startup so misconfigurations fail
     fast rather than at request time.
+
+    Authentication uses Azure Identity (DefaultAzureCredential).
+    Run ``az login`` locally or use managed identity in Azure.
     """
 
     model_config = SettingsConfigDict(
@@ -24,14 +27,9 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
-    # Azure OpenAI
+    # Azure OpenAI (auth via DefaultAzureCredential — no API key)
     AZURE_OPENAI_ENDPOINT: Optional[str] = None
-    AZURE_OPENAI_API_KEY: Optional[str] = None
     AZURE_OPENAI_DEPLOYMENT: Optional[str] = None
-
-    # Bing Web Search
-    BING_SEARCH_API_KEY: Optional[str] = None
-    BING_SEARCH_ENDPOINT: Optional[str] = None
 
     # Application
     APP_VERSION: str = "0.1.0"
