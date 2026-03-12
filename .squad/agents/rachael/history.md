@@ -8,11 +8,21 @@
 - **Key Agents:** General (destination matching), POI (points of interest), Event (festivals), Weather (historical forecasts)
 - **Architecture:** Two-phase orchestration — General Agent (sequential) → concurrent fan-out to POI/Event/Weather via asyncio.gather
 - **Grounding:** All agents use Bing Web Search; mandatory search-first pattern
-- **Status:** Phases 1-3 complete (foundation, agents, orchestration). 107 tests passing.
+- **Status:** Phases 1-5 complete. 247 tests passing.
+
+## Summary
+
+| Phase | Diagrams | Status | Key Diagrams |
+|-------|----------|--------|--------------|
+| Phase 1 | 7 Mermaid | ✅ COMPLETE | System overview, orchestration sequence, data flow, class diagram, API flow, infrastructure, error handling |
+| Phase 4 | +1 Mermaid | ✅ COMPLETE | Frontend component architecture |
+| Phase 5 | +1 Mermaid | ✅ COMPLETE | CI/CD Deployment Pipeline |
+| **Total** | **9 Mermaid** | **✅ COMPLETE** | All in docs/diagrams.md |
 
 ## Key Files
 
 - `docs/architecture.md` — single source of truth for architecture
+- `docs/diagrams.md` — 9 Mermaid diagrams with maintenance guide
 - `src/orchestrator/travel_orchestrator.py` — two-phase agent pipeline
 - `src/agents/` — 4 agent implementations + web search tool
 - `src/api/` — FastAPI app with routes and Pydantic models
@@ -20,7 +30,15 @@
 
 ## Learnings
 
-### 2026-03-12 — Comprehensive Mermaid Diagram Creation
+### Phase 1-3 Diagram Creation (Archived)
+
+- Created 7 Mermaid diagrams for system architecture, orchestration, data flow, class models, API flow, infrastructure, and error handling
+- Established color coding: Blue (user-facing), Yellow (orchestration), Purple (agents), Red (external), Green (success)
+- Used `par...and...end` for concurrent execution visualization
+- Maintenance guide documented for future updates
+- All cross-linked from docs/architecture.md and README.md
+
+### 2026-03-12 — Phase 4 Frontend Component Architecture Diagram
 
 **Patterns Used:**
 - **System overview**: `graph TD` (top-down flowchart) for high-level architecture with external services
