@@ -1,0 +1,31 @@
+{
+  "comment": "Mock Bing search results for points of interest queries",
+  "query": "Lisbon Portugal points of interest attractions",
+  "results": [
+    {
+      "title": "Belém Tower - UNESCO World Heritage Site",
+      "url": "https://example.com/belem-tower",
+      "snippet": "Iconic 16th-century fortress on the Tagus River. Visit duration: 1-2 hours. A symbol of Portugal's Age of Discovery."
+    },
+    {
+      "title": "Jerónimos Monastery - Lisbon's Architectural Masterpiece",
+      "url": "https://example.com/jeronimos-monastery",
+      "snippet": "Stunning Manueline architecture and the final resting place of Vasco da Gama. Allow 2-3 hours for exploration."
+    },
+    {
+      "title": "Alfama District - Historic Lisbon Neighborhood",
+      "url": "https://example.com/alfama-district",
+      "snippet": "Wander the narrow streets of Lisbon's oldest district. Experience Fado music, local cuisine, and medieval charm. Half-day recommended."
+    },
+    {
+      "title": "Time Out Market Lisbon - Culinary Paradise",
+      "url": "https://example.com/timeout-market",
+      "snippet": "Gourmet food hall showcasing Portugal's best chefs. Perfect for lunch or dinner. Plan for 1-2 hours."
+    },
+    {
+      "title": "São Jorge Castle - Panoramic Views of Lisbon",
+      "url": "https://example.com/sao-jorge-castle",
+      "snippet": "Medieval Moorish castle with breathtaking city views. Interactive exhibits on Lisbon's history. 2-3 hours recommended."
+    }
+  ]
+}

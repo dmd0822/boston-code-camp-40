@@ -1,166 +1,174 @@
-"""Stub travel orchestrator — returns mock data in Phase 1.
+"""Travel orchestrator — coordinates agent pipeline.
 
-In Phase 2 this will wire the General Agent (sequential) to
-POI / Event / Weather agents (concurrent fan-out / fan-in).
+Phase 1 (Sequential): General Agent recommends destinations.
+Phase 2 (Concurrent): POI/Event/Weather agents enrich each dest.
 """
 
-from datetime import date, datetime, timezone
-from typing import List
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Callable, List, Optional, TypeVar
 
-from src.api.models.customer import CustomerProfile
+from src.agents.event_agent import find_events
+from src.agents.general_agent import recommend_destinations
+from src.agents.poi_agent import find_points_of_interest
+from src.agents.weather_agent import get_weather_forecast
+from src.api.models.customer import CustomerProfile, TravelDates
 from src.api.models.itinerary import (
     Destination,
     Event,
-    EventDates,
     ItineraryResponse,
     PointOfInterest,
     WeatherForecast,
 )
+from src.config.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class TravelOrchestrator:
     """Orchestrates the agent pipeline for itinerary generation.
 
-    Phase 1 (stub): returns realistic mock data.
-    Phase 2: General Agent → fan-out POI/Event/Weather.
+    Two-phase execution:
+    1. Sequential: General Agent recommends 3-4 destinations
+    2. Concurrent: POI/Event/Weather agents enrich each destination
+
+    Error handling: Specialist agent failures result in partial
+    data (empty lists, None) rather than cascading failures.
     """
 
+    def __init__(self, settings: Settings) -> None:
+        """Initialize the orchestrator with configuration.
+
+        Args:
+            settings: Application settings for agent initialization.
+        """
+        self.settings = settings
+
     async def generate_itinerary(
-        self,
-        profile: CustomerProfile,
+        self, profile: CustomerProfile
     ) -> ItineraryResponse:
         """Build an itinerary for the given customer profile.
 
-        Parameters:
-            profile: Validated customer preferences.
+        Args:
+            profile: Validated customer preferences and constraints.
 
         Returns:
-            ItineraryResponse with destinations and metadata.
+            ItineraryResponse with enriched destinations.
         """
-        destinations = self._build_mock_destinations(profile)
+        # Phase 1: Get destinations from General Agent (sequential)
+        try:
+            destinations = await recommend_destinations(
+                profile, self.settings
+            )
+        except Exception as exc:
+            logger.error(
+                f"General Agent failed: {exc}",
+                exc_info=True,
+            )
+            # Return empty itinerary on General Agent failure
+            return ItineraryResponse(
+                destinations=[],
+                generated_at=datetime.now(timezone.utc),
+            )
+
+        if not destinations:
+            logger.info("General Agent returned no destinations")
+            return ItineraryResponse(
+                destinations=[],
+                generated_at=datetime.now(timezone.utc),
+            )
+
+        # Phase 2: Enrich destinations concurrently
+        enriched_destinations = await asyncio.gather(
+            *[
+                self._enrich_destination(dest, profile.travel_dates)
+                for dest in destinations
+            ]
+        )
+
         return ItineraryResponse(
-            destinations=destinations,
+            destinations=enriched_destinations,
             generated_at=datetime.now(timezone.utc),
         )
 
-    # ----------------------------------------------------------
-    # Private helpers (mock data for Phase 1)
-    # ----------------------------------------------------------
+    async def _enrich_destination(
+        self, destination: Destination, travel_dates: TravelDates
+    ) -> Destination:
+        """Enrich a destination with POI, event, and weather data.
 
-    def _build_mock_destinations(
-        self,
-        profile: CustomerProfile,
-    ) -> List[Destination]:
-        """Return hard-coded Lisbon example from architecture doc.
+        Uses concurrent execution to fan-out to specialist agents,
+        then merges results back into the destination.
 
-        Parameters:
-            profile: Customer profile (unused in stub).
+        Args:
+            destination: Base destination from General Agent.
+            travel_dates: Customer travel date range.
 
         Returns:
-            List of mock Destination objects.
+            Enriched destination with POI, events, and weather.
         """
-        return [
-            Destination(
-                name="Lisbon",
-                country="Portugal",
-                rationale=(
-                    "Rich history, world-class food scene, "
-                    "mild June weather"
-                ),
-                points_of_interest=[
-                    PointOfInterest(
-                        name="Belém Tower",
-                        description=(
-                            "UNESCO World Heritage Site and iconic "
-                            "symbol of Portugal's Age of Discovery"
-                        ),
-                        category="history",
-                        visit_duration_hours=1.5,
-                        source_url=(
-                            "https://whc.unesco.org/en/list/263"
-                        ),
-                    ),
-                    PointOfInterest(
-                        name="Time Out Market",
-                        description=(
-                            "Gourmet food hall in Mercado da "
-                            "Ribeira with top Lisbon chefs"
-                        ),
-                        category="food",
-                        visit_duration_hours=2.0,
-                        source_url=(
-                            "https://www.timeoutmarket.com/lisboa"
-                        ),
-                    ),
-                ],
-                events=[
-                    Event(
-                        name="Festa de Santo António",
-                        dates=EventDates(
-                            start=date(2026, 6, 12),
-                            end=date(2026, 6, 13),
-                        ),
-                        description=(
-                            "Lisbon's biggest street festival "
-                            "with sardine grills, music, and "
-                            "parades through Alfama"
-                        ),
-                        venue="Alfama district",
-                        source_url=(
-                            "https://www.visitlisboa.com/"
-                            "en/events/santo-antonio"
-                        ),
-                    ),
-                ],
-                weather=WeatherForecast(
-                    avg_high_celsius=27.0,
-                    avg_low_celsius=17.0,
-                    precipitation_chance="low",
-                    clothing_suggestion=(
-                        "Light layers, comfortable walking "
-                        "shoes, sunscreen"
-                    ),
-                    source_url=(
-                        "https://weatherspark.com/y/32022/"
-                        "Average-Weather-in-Lisbon-Portugal"
-                    ),
-                ),
-            ),
-            Destination(
-                name="Porto",
-                country="Portugal",
-                rationale=(
-                    "Stunning riverside architecture, port "
-                    "wine cellars, and vibrant food culture"
-                ),
-                points_of_interest=[
-                    PointOfInterest(
-                        name="Livraria Lello",
-                        description=(
-                            "Historic bookstore with ornate "
-                            "neo-Gothic interior and famous "
-                            "crimson staircase"
-                        ),
-                        category="culture",
-                        visit_duration_hours=1.0,
-                        source_url=(
-                            "https://www.livrarialello.pt"
-                        ),
-                    ),
-                ],
-                events=[],
-                weather=WeatherForecast(
-                    avg_high_celsius=24.0,
-                    avg_low_celsius=15.0,
-                    precipitation_chance="moderate",
-                    clothing_suggestion=(
-                        "Light jacket for evenings, "
-                        "comfortable walking shoes"
-                    ),
-                    source_url=(
-                        "https://weatherspark.com/y/32045/"
-                        "Average-Weather-in-Porto-Portugal"
-                    ),
-                ),
-            ),
-        ]
+        # Fan-out: Call all specialist agents concurrently
+        poi_task = self._safe_call(
+            find_points_of_interest,
+            destination.name,
+            destination.country,
+            travel_dates,
+            self.settings,
+            default=[],
+        )
+        event_task = self._safe_call(
+            find_events,
+            destination.name,
+            destination.country,
+            travel_dates,
+            self.settings,
+            default=[],
+        )
+        weather_task = self._safe_call(
+            get_weather_forecast,
+            destination.name,
+            destination.country,
+            travel_dates,
+            self.settings,
+            default=None,
+        )
+
+        poi_list, event_list, weather = await asyncio.gather(
+            poi_task, event_task, weather_task
+        )
+
+        # Fan-in: Merge results into destination
+        destination.points_of_interest = poi_list
+        destination.events = event_list
+        destination.weather = weather
+
+        return destination
+
+    async def _safe_call(
+        self,
+        agent_func: Callable[..., T],
+        *args,
+        default: T,
+        **kwargs,
+    ) -> T:
+        """Wrap agent call with error handling and default fallback.
+
+        Args:
+            agent_func: The agent function to call.
+            *args: Positional arguments for the agent function.
+            default: Default value to return on failure.
+            **kwargs: Keyword arguments for the agent function.
+
+        Returns:
+            Agent function result on success, default on failure.
+        """
+        try:
+            return await agent_func(*args, **kwargs)
+        except Exception as exc:
+            logger.warning(
+                f"Agent {agent_func.__name__} failed: {exc}. "
+                f"Using default: {default}"
+            )
+            return default

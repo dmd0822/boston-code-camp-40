@@ -7,10 +7,12 @@ a plain ``dict`` (or object) so tests can mutate copies freely.
 
 from __future__ import annotations
 
+import json
 import os
 from copy import deepcopy
 from datetime import date, datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -161,3 +163,58 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)
+
+
+# ------------------------------------------------------------------
+# Phase 2 fixtures: Agent and search tool mocking
+# ------------------------------------------------------------------
+
+
+@pytest.fixture()
+def sample_search_results() -> List[Dict[str, str]]:
+    """Return a list of mock Bing search result dicts.
+
+    Each result has: title, url, snippet.
+    """
+    return [
+        {
+            "title": "Lisbon Travel Guide",
+            "url": "https://example.com/lisbon-guide",
+            "snippet": (
+                "Discover Lisbon's rich history, world-class "
+                "cuisine, and nearby hiking trails."
+            ),
+        },
+        {
+            "title": "Porto Food Scene",
+            "url": "https://example.com/porto-food",
+            "snippet": (
+                "Porto offers medieval history and renowned "
+                "wine cellars."
+            ),
+        },
+        {
+            "title": "Krakow Historic Sites",
+            "url": "https://example.com/krakow",
+            "snippet": (
+                "Explore Krakow's Old Town and taste "
+                "traditional Polish cuisine."
+            ),
+        },
+    ]
+
+
+@pytest.fixture()
+def mock_search_web(
+    sample_search_results: List[Dict[str, str]]
+) -> Any:
+    """Return a context manager that mocks search_web tool.
+
+    Use with ``with mock_search_web:`` in tests to patch the
+    web search function.
+    """
+    with patch(
+        "src.agents.tools.web_search.search_web"
+    ) as mock_search:
+        mock_search.return_value = sample_search_results
+        yield mock_search

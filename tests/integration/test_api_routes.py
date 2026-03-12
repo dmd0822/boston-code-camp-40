@@ -1,0 +1,330 @@
+"""Integration tests for the API routes.
+
+Tests the FastAPI routes with TestClient to verify:
+1. Health endpoint returns healthy status
+2. Itinerary endpoint accepts valid input and returns 200
+3. Itinerary endpoint rejects invalid input with 422
+4. Orchestrator errors are handled gracefully
+
+Orchestrator is mocked to avoid real agent execution.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+from src.api.app import create_app
+from src.api.models.itinerary import (
+    Destination,
+    ItineraryResponse,
+    PointOfInterest,
+    WeatherForecast,
+)
+
+
+# ------------------------------------------------------------------
+# Fixtures
+# ------------------------------------------------------------------
+
+
+@pytest.fixture()
+def client() -> TestClient:
+    """Return a TestClient for the FastAPI app."""
+    app = create_app()
+    return TestClient(app)
+
+
+@pytest.fixture()
+def mock_itinerary() -> ItineraryResponse:
+    """Return a mock ItineraryResponse for orchestrator mocking."""
+    destination = Destination(
+        name="Lisbon",
+        country="Portugal",
+        rationale=(
+            "Rich history, world-class food scene, "
+            "mild June weather"
+        ),
+        points_of_interest=[
+            PointOfInterest(
+                name="Belém Tower",
+                description=(
+                    "UNESCO World Heritage Site and iconic "
+                    "Lisbon landmark."
+                ),
+                category="history",
+                visit_duration_hours=1.5,
+                source_url="https://example.com/belem-tower",
+            ),
+        ],
+        events=[],
+        weather=WeatherForecast(
+            avg_high_celsius=27.0,
+            avg_low_celsius=17.0,
+            precipitation_chance="low",
+            clothing_suggestion=(
+                "Light layers, comfortable walking shoes"
+            ),
+            source_url="https://example.com/lisbon-weather",
+        ),
+    )
+    return ItineraryResponse(
+        destinations=[destination],
+        generated_at=datetime.now(timezone.utc),
+    )
+
+
+# ------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------
+
+
+class TestHealthEndpoint:
+    """Test suite for the health check endpoint."""
+
+    def test_health_endpoint_returns_200(
+        self, client: TestClient
+    ) -> None:
+        """Verify GET /api/health returns 200 with healthy status.
+
+        Health endpoint is used by infrastructure probes to
+        verify service is responsive.
+        """
+        response = client.get("/api/health")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "version" in data
+
+
+class TestItineraryEndpoint:
+    """Test suite for the itinerary generation endpoint."""
+
+    def test_post_itinerary_returns_200_with_valid_input(
+        self,
+        client: TestClient,
+        sample_customer_profile: Dict[str, Any],
+        mock_itinerary: ItineraryResponse,
+    ) -> None:
+        """Verify POST /api/itinerary returns 200 with valid input.
+
+        Full happy path with mocked orchestrator to avoid real
+        agent execution.
+        """
+        with patch(
+            "src.api.routes.itinerary.TravelOrchestrator"
+        ) as MockOrch:
+            mock_instance = MagicMock()
+            mock_instance.generate_itinerary = AsyncMock(
+                return_value=mock_itinerary
+            )
+            MockOrch.return_value = mock_instance
+
+            response = client.post(
+                "/api/itinerary", json=sample_customer_profile
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "destinations" in data
+            assert "generated_at" in data
+            assert isinstance(data["destinations"], list)
+
+    def test_post_itinerary_returns_422_on_invalid_input(
+        self, client: TestClient
+    ) -> None:
+        """Verify POST /api/itinerary returns 422 on invalid input.
+
+        Missing required fields should trigger Pydantic
+        validation error.
+        """
+        invalid_profile = {
+            "interests": ["history"],
+            # Missing budget, travel_dates, party_size,
+            # departure_city
+        }
+
+        response = client.post(
+            "/api/itinerary", json=invalid_profile
+        )
+
+        assert response.status_code == 422
+        data = response.json()
+        assert "detail" in data
+
+    def test_post_itinerary_handles_orchestrator_error(
+        self,
+        client: TestClient,
+        sample_customer_profile: Dict[str, Any],
+    ) -> None:
+        """Verify orchestrator error propagates as 500 error.
+
+        If orchestrator raises an exception, FastAPI converts it
+        to a 500 Internal Server Error. Test verifies the error
+        is raised (not silently swallowed).
+        """
+        with patch(
+            "src.api.routes.itinerary.TravelOrchestrator"
+        ) as MockOrch:
+            mock_instance = MagicMock()
+            mock_instance.generate_itinerary = AsyncMock(
+                side_effect=Exception("Orchestrator error")
+            )
+            MockOrch.return_value = mock_instance
+
+            # FastAPI TestClient will raise the exception
+            # in test mode rather than returning 500
+            with pytest.raises(Exception, match="Orchestrator error"):
+                response = client.post(
+                    "/api/itinerary", json=sample_customer_profile
+                )
+
+    def test_post_itinerary_response_structure(
+        self,
+        client: TestClient,
+        sample_customer_profile: Dict[str, Any],
+        mock_itinerary: ItineraryResponse,
+    ) -> None:
+        """Verify response has correct structure.
+
+        Response must have destinations array and generated_at
+        timestamp.
+        """
+        with patch(
+            "src.api.routes.itinerary.TravelOrchestrator"
+        ) as MockOrch:
+            mock_instance = MagicMock()
+            mock_instance.generate_itinerary = AsyncMock(
+                return_value=mock_itinerary
+            )
+            MockOrch.return_value = mock_instance
+
+            response = client.post(
+                "/api/itinerary", json=sample_customer_profile
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Validate structure
+            assert "destinations" in data
+            assert "generated_at" in data
+            assert isinstance(data["destinations"], list)
+            assert len(data["destinations"]) > 0
+            # Validate destination structure
+            dest = data["destinations"][0]
+            assert "name" in dest
+            assert "country" in dest
+            assert "rationale" in dest
+            assert "points_of_interest" in dest
+            assert "events" in dest
+            assert "weather" in dest
+
+    def test_post_itinerary_accepts_valid_budget_values(
+        self, client: TestClient, mock_itinerary: ItineraryResponse
+    ) -> None:
+        """Verify budget field accepts valid enum values.
+
+        Budget must be one of: budget, moderate, luxury.
+        """
+        valid_profile = {
+            "interests": ["history"],
+            "budget": "moderate",
+            "travel_dates": {
+                "start": "2026-06-15",
+                "end": "2026-06-25",
+            },
+            "party_size": 2,
+            "departure_city": "Boston",
+        }
+
+        with patch(
+            "src.api.routes.itinerary.TravelOrchestrator"
+        ) as MockOrch:
+            mock_instance = MagicMock()
+            mock_instance.generate_itinerary = AsyncMock(
+                return_value=mock_itinerary
+            )
+            MockOrch.return_value = mock_instance
+
+            response = client.post(
+                "/api/itinerary", json=valid_profile
+            )
+
+            assert response.status_code == 200
+
+    def test_post_itinerary_rejects_invalid_budget_value(
+        self, client: TestClient
+    ) -> None:
+        """Verify invalid budget value triggers validation error.
+
+        Budget field has pattern validation for allowed values.
+        """
+        invalid_profile = {
+            "interests": ["history"],
+            "budget": "cheap",  # Invalid value
+            "travel_dates": {
+                "start": "2026-06-15",
+                "end": "2026-06-25",
+            },
+            "party_size": 2,
+            "departure_city": "Boston",
+        }
+
+        response = client.post(
+            "/api/itinerary", json=invalid_profile
+        )
+
+        assert response.status_code == 422
+
+    def test_post_itinerary_requires_non_empty_interests(
+        self, client: TestClient
+    ) -> None:
+        """Verify interests field requires at least one item.
+
+        CustomerProfile enforces min_length=1 on interests.
+        """
+        invalid_profile = {
+            "interests": [],  # Empty list
+            "budget": "moderate",
+            "travel_dates": {
+                "start": "2026-06-15",
+                "end": "2026-06-25",
+            },
+            "party_size": 2,
+            "departure_city": "Boston",
+        }
+
+        response = client.post(
+            "/api/itinerary", json=invalid_profile
+        )
+
+        assert response.status_code == 422
+
+    def test_post_itinerary_requires_positive_party_size(
+        self, client: TestClient
+    ) -> None:
+        """Verify party_size must be at least 1.
+
+        CustomerProfile enforces ge=1 on party_size.
+        """
+        invalid_profile = {
+            "interests": ["history"],
+            "budget": "moderate",
+            "travel_dates": {
+                "start": "2026-06-15",
+                "end": "2026-06-25",
+            },
+            "party_size": 0,  # Invalid
+            "departure_city": "Boston",
+        }
+
+        response = client.post(
+            "/api/itinerary", json=invalid_profile
+        )
+
+        assert response.status_code == 422

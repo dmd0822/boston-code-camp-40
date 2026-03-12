@@ -80,3 +80,123 @@
 - **source_url optionality** (Zhora proposal) — awaits Deckard decision on grounding enforcement
 
 **Next phase:** Phase 2 agents (Batty wiring real agents, Zhora expanding to integration tests) can begin independently.
+
+### 2026-03-12 — Phase 2 Unit Tests Complete (Zhora)
+
+**Status:** 25 agent tests written, all skipping until agent modules exist
+
+**Test Structure Created:**
+- `tests/unit/tools/test_web_search.py` — 6 tests for Bing Web Search tool
+- `tests/unit/agents/test_general_agent.py` — 5 tests for destination recommender
+- `tests/unit/agents/test_poi_agent.py` — 4 tests for POI enrichment
+- `tests/unit/agents/test_event_agent.py` — 5 tests for event discovery
+- `tests/unit/agents/test_weather_agent.py` — 5 tests for weather forecasts
+
+**Fixtures Created:**
+- Search results: `tests/fixtures/search_results/bing_*.json` (destinations, poi, events, weather)
+- Agent responses: `tests/fixtures/agent_responses/*.json` (mock LLM outputs for each agent)
+- Conftest additions: `sample_search_results` and `mock_search_web` fixtures
+
+**Testing Patterns:**
+- **Contract testing** — tests verify PUBLIC APIs and Pydantic model compliance, not implementation details
+- **pytest.importorskip** — all agent tests skip gracefully when modules don't exist yet
+- **Mock-first design** — all tests use mocked LLM responses and search results (zero real API calls)
+- **Grounding validation** — tests check that source_urls are populated where required
+- **Edge case coverage** — empty results, unknown destinations, invalid dates, timeout handling
+- **Arrange-Act-Assert** — every test follows clear AAA structure with docstrings
+
+**Key Test Scenarios:**
+- **Web Search Tool:** Success cases, missing API key, timeout, empty results, HTTP errors, result structure validation
+- **General Agent:** Returns 3-4 destinations, calls search_web, valid Pydantic models, minimal profile handling, single vs many interests
+- **POI Agent:** Source URLs present, valid POI models, unknown destination handling, required field validation
+- **Event Agent:** Date-scoped events only, empty list when no events, valid dates, required fields, graceful handling
+- **Weather Agent:** Plausible temperatures, clothing suggestions, valid model, unknown destination, precipitation values
+
+**Contract Definitions (for Batty):**
+- `search_web(query: str, settings: Settings) -> List[dict]` — each dict has title, url, snippet
+- `generate_destinations(profile: CustomerProfile, settings: Settings) -> List[Destination]`
+- `get_points_of_interest(destination: Destination, dates: TravelDates, settings: Settings) -> List[PointOfInterest]`
+- `get_events(destination: Destination, dates: TravelDates, settings: Settings) -> List[Event]`
+- `get_weather_forecast(destination: Destination, dates: TravelDates, settings: Settings) -> WeatherForecast`
+
+**Test Results:**
+- Phase 1 (67 tests): ✅ ALL PASSING
+- Phase 2 (25 tests): ⏸️ ALL SKIPPING (waiting for agent modules)
+- Total: 92 tests, ready to validate Batty's implementation
+
+**What This Enables:**
+- Batty can build agents against these test contracts
+- Tests will activate automatically when agent modules exist
+- Minor signature differences can be quickly identified and adjusted
+- Grounding and hallucination prevention are validated from day one
+
+### 2026-03-12 — Phase 3 Tests Complete (Zhora)
+
+**Status:** 15 new tests written — orchestrator + API integration
+
+**New Test Files:**
+- `tests/unit/orchestrator/test_travel_orchestrator.py` — 6 tests
+- `tests/integration/test_api_routes.py` — 9 tests (health + itinerary)
+
+**Orchestrator Test Coverage (Task 3.3):**
+- `test_sequential_then_concurrent_flow` — Verifies General 
+Agent called first, then POI/Event/Weather per destination
+- `test_fan_out_executes_all_three_specialist_agents` — 
+Confirms all 3 specialist agents execute for each destination
+- `test_partial_failure_returns_partial_itinerary` — POI 
+failure doesn't crash (returns partial result)
+- `test_general_agent_failure_returns_empty_itinerary` — 
+General Agent failure returns empty list (not crash)
+- `test_returns_valid_itinerary_response` — Output is valid 
+ItineraryResponse with generated_at
+- `test_multiple_destinations_enriched` — All destinations 
+get POI/Event/Weather enrichment
+
+**Integration Test Coverage (Task 3.4):**
+- `test_health_endpoint_returns_200` — GET /api/health works
+- `test_post_itinerary_returns_200_with_valid_input` — Happy 
+path with mocked orchestrator
+- `test_post_itinerary_returns_422_on_invalid_input` — 
+Missing fields trigger Pydantic validation
+- `test_post_itinerary_handles_orchestrator_error` — 
+Exception handling verified
+- `test_post_itinerary_response_structure` — Response has 
+correct schema structure
+- `test_post_itinerary_accepts_valid_budget_values` — Budget 
+enum validation works
+- `test_post_itinerary_rejects_invalid_budget_value` — 
+Invalid budget triggers 422
+- `test_post_itinerary_requires_non_empty_interests` — 
+min_length=1 enforced on interests
+- `test_post_itinerary_requires_positive_party_size` — 
+party_size >= 1 enforced
+
+**Testing Strategy:**
+- **Contract-based testing** — Tests mock agent imports at 
+`src.orchestrator.travel_orchestrator.*` (where Batty will 
+import them)
+- **Flexible mocking** — Tests use `pytest.importorskip` and 
+adapt to actual implementation patterns
+- **AsyncMock everywhere** — All agent functions are async, 
+mocks use `new_callable=AsyncMock`
+- **Partial failure testing** — Tests verify graceful 
+degradation when individual agents fail
+- **FastAPI TestClient** — Integration tests use TestClient 
+for realistic request/response testing
+- **Orchestrator mocking in integration** — Mock entire 
+TravelOrchestrator class to avoid real agent calls
+
+**Test Results:**
+- Phase 1 (67 tests): ✅ ALL PASSING
+- Phase 2 (25 tests): ✅ ALL PASSING (agent modules now exist)
+- Phase 3 (15 tests): ✅ ALL PASSING
+- **Total: 107 tests, 100% passing**
+
+**Key Decisions:**
+- Integration test for orchestrator errors uses 
+`pytest.raises` because FastAPI TestClient re-raises 
+exceptions in test mode (not converted to 500 responses)
+- Tests written against architecture spec contracts, not 
+stub implementation (ready for Batty's real orchestrator)
+- Mock fixtures are comprehensive but flexible (can be 
+adjusted as Batty implements concurrent fan-out logic)

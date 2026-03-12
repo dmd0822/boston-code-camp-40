@@ -1,0 +1,20 @@
+{
+  "comment": "Mock LLM response for General Agent - destination recommendations",
+  "destinations": [
+    {
+      "name": "Lisbon",
+      "country": "Portugal",
+      "rationale": "Combines rich history, world-class food scene, and mild June weather. Affordable destination with excellent walking trails nearby."
+    },
+    {
+      "name": "Porto",
+      "country": "Portugal",
+      "rationale": "Medieval architecture, renowned cuisine, and Douro Valley hiking. Budget-friendly with authentic cultural experiences."
+    },
+    {
+      "name": "Krakow",
+      "country": "Poland",
+      "rationale": "Well-preserved medieval Old Town, traditional Polish food, and Tatra Mountains for hiking. Very affordable on moderate budget."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "comment": "Mock Bing search results for event queries",
+  "query": "Lisbon Portugal events festivals June 2026",
+  "results": [
+    {
+      "title": "Festa de Santo António 2026 - Lisbon's Biggest Festival",
+      "url": "https://example.com/santo-antonio-festival",
+      "snippet": "Annual celebration on June 12-13, 2026. Parades, street parties, grilled sardines, and traditional music fill the Alfama district."
+    },
+    {
+      "title": "Lisbon Fish & Flavours Festival - June 2026",
+      "url": "https://example.com/fish-flavours-festival",
+      "snippet": "Culinary festival from June 18-21, 2026 at Parque das Nações. Celebrity chefs, seafood tastings, and cooking workshops."
+    },
+    {
+      "title": "Rock in Rio Lisboa 2026",
+      "url": "https://example.com/rock-in-rio-2026",
+      "snippet": "Major music festival June 20-21 and 27-28, 2026. International and Portuguese artists at Parque da Bela Vista."
+    },
+    {
+      "title": "Festas de Lisboa - Month-Long Celebration",
+      "url": "https://example.com/festas-de-lisboa",
+      "snippet": "Throughout June 2026, Lisbon celebrates its patron saints with neighborhood parties, live music, and traditional food across the city."
+    }
+  ]
+}

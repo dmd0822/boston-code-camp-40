@@ -1,0 +1,26 @@
+{
+  "comment": "Mock Bing search results for weather queries",
+  "query": "Lisbon Portugal weather June historical average temperature",
+  "results": [
+    {
+      "title": "Lisbon June Weather Averages - Climate Guide",
+      "url": "https://example.com/lisbon-june-weather",
+      "snippet": "Average high: 27°C (81°F), average low: 17°C (63°F). Low precipitation, sunny days. Ideal for outdoor activities and sightseeing."
+    },
+    {
+      "title": "Historical Weather Data - Lisbon June",
+      "url": "https://example.com/lisbon-historical-weather",
+      "snippet": "June in Lisbon: 25-28°C daytime, 16-18°C evenings. Rainfall rare (10% chance). Pack light layers and sunscreen."
+    },
+    {
+      "title": "What to Pack for Lisbon in June",
+      "url": "https://example.com/lisbon-packing-june",
+      "snippet": "Comfortable walking shoes, light breathable clothing, sunglasses, and a light jacket for evenings. Temperatures range 17-27°C."
+    },
+    {
+      "title": "Lisbon Climate and Best Time to Visit",
+      "url": "https://example.com/lisbon-climate",
+      "snippet": "June is peak season with warm, dry weather. Average temps 17-27°C. Perfect conditions for exploring monuments and coastal areas."
+    }
+  ]
+}

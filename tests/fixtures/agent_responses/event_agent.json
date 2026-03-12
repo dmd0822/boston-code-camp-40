@@ -1,0 +1,35 @@
+{
+  "comment": "Mock LLM response for Event Agent - festivals and events",
+  "events": [
+    {
+      "name": "Festa de Santo António",
+      "dates": {
+        "start": "2026-06-14",
+        "end": "2026-06-15"
+      },
+      "description": "Lisbon's biggest street festival celebrating Saint Anthony with parades, street parties, grilled sardines, and traditional music.",
+      "venue": "Alfama district and city center",
+      "source_url": "https://example.com/santo-antonio-festival"
+    },
+    {
+      "name": "Lisbon Fish & Flavours Festival",
+      "dates": {
+        "start": "2026-06-18",
+        "end": "2026-06-21"
+      },
+      "description": "Culinary festival featuring celebrity chefs, seafood tastings, and cooking workshops celebrating Portuguese gastronomy.",
+      "venue": "Parque das Nações",
+      "source_url": "https://example.com/fish-flavours-festival"
+    },
+    {
+      "name": "Rock in Rio Lisboa",
+      "dates": {
+        "start": "2026-06-20",
+        "end": "2026-06-21"
+      },
+      "description": "Major international music festival with diverse lineup of artists from around the world.",
+      "venue": "Parque da Bela Vista",
+      "source_url": "https://example.com/rock-in-rio-2026"
+    }
+  ]
+}

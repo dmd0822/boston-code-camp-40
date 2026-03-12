@@ -17,6 +17,7 @@ tqdm
 # Testing
 pytest
 pytest-cov
+pytest-asyncio
 
 # Lint/format (optional but recommended)
 ruff

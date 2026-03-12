@@ -1,0 +1,10 @@
+{
+  "comment": "Mock LLM response for Weather Agent - historical weather forecast",
+  "weather": {
+    "avg_high_celsius": 27.0,
+    "avg_low_celsius": 17.0,
+    "precipitation_chance": "low",
+    "clothing_suggestion": "Light layers, comfortable walking shoes, sunglasses, and sunscreen. Bring a light jacket for evening strolls.",
+    "source_url": "https://example.com/lisbon-june-weather"
+  }
+}

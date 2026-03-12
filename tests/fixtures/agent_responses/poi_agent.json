@@ -1,0 +1,40 @@
+{
+  "comment": "Mock LLM response for POI Agent - points of interest",
+  "points_of_interest": [
+    {
+      "name": "Belém Tower",
+      "description": "Iconic 16th-century fortress on the Tagus River, a UNESCO World Heritage Site and symbol of Portugal's Age of Discovery.",
+      "category": "history",
+      "visit_duration_hours": 1.5,
+      "source_url": "https://example.com/belem-tower"
+    },
+    {
+      "name": "Jerónimos Monastery",
+      "description": "Stunning Manueline architecture, UNESCO site, and final resting place of Vasco da Gama.",
+      "category": "history",
+      "visit_duration_hours": 2.5,
+      "source_url": "https://example.com/jeronimos-monastery"
+    },
+    {
+      "name": "Time Out Market",
+      "description": "Gourmet food hall showcasing Portugal's best chefs in a vibrant marketplace setting.",
+      "category": "food",
+      "visit_duration_hours": 1.5,
+      "source_url": "https://example.com/timeout-market"
+    },
+    {
+      "name": "Alfama District",
+      "description": "Lisbon's oldest neighborhood with narrow streets, Fado music venues, and medieval charm.",
+      "category": "history",
+      "visit_duration_hours": 3.0,
+      "source_url": "https://example.com/alfama-district"
+    },
+    {
+      "name": "São Jorge Castle",
+      "description": "Medieval Moorish castle offering panoramic views of Lisbon and interactive history exhibits.",
+      "category": "history",
+      "visit_duration_hours": 2.0,
+      "source_url": "https://example.com/sao-jorge-castle"
+    }
+  ]
+}

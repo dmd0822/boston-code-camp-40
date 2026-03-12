@@ -1,0 +1,26 @@
+{
+  "comment": "Mock Bing search results for destination queries",
+  "query": "best travel destinations for history food hiking moderate budget",
+  "results": [
+    {
+      "title": "Lisbon Travel Guide - History, Food & Nature",
+      "url": "https://example.com/lisbon-guide",
+      "snippet": "Discover Lisbon's rich history, world-class cuisine, and nearby hiking trails. Perfect for moderate budget travelers seeking culture and adventure."
+    },
+    {
+      "title": "Porto: Portugal's Hidden Gem for Food Lovers",
+      "url": "https://example.com/porto-food",
+      "snippet": "Porto offers medieval history, renowned wine cellars, and stunning coastal walks. An affordable European destination with authentic experiences."
+    },
+    {
+      "title": "Krakow: Medieval History and Mountain Hiking",
+      "url": "https://example.com/krakow-hiking",
+      "snippet": "Explore Krakow's Old Town, taste traditional Polish cuisine, and hike the Tatra Mountains. Budget-friendly with rich cultural heritage."
+    },
+    {
+      "title": "Barcelona Travel - History, Gastronomy & Hiking",
+      "url": "https://example.com/barcelona",
+      "snippet": "Barcelona blends Gothic architecture, Mediterranean cuisine, and access to hiking in Montserrat and the Pyrenees."
+    }
+  ]
+}
