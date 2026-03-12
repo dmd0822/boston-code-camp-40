@@ -124,7 +124,7 @@ The resource group must exist before deployment. Resource group names are config
 ```bash
 # Set variables from config
 $RESOURCE_GROUP = "rg-travel-agent-dev"
-$LOCATION = "eastus2"
+$LOCATION = "westus3"
 
 # Create resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
