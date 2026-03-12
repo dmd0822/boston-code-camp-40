@@ -18,7 +18,7 @@ param skuName string = 'S1'
 @description('Tags to apply to the resource')
 param tags object = {}
 
-resource bingSearch 'Microsoft.Bing/accounts@2020-06-10' = {
+resource bingSearch 'Microsoft.Bing/accounts@2022-10-01-preview' = {
   name: name
   location: 'global'
   tags: tags
