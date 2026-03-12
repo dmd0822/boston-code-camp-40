@@ -844,16 +844,18 @@ httpx
 | 4.6 | Loading + Error states | Frontend | 4.1 |
 | 4.7 | Wire it all together in App.tsx | Frontend | 4.3–4.6 |
 
-### Phase 5 — Infrastructure (Build Fifth)
+### Phase 5 — Infrastructure (Build Fifth) ✅ **COMPLETE**
 
 > Goal: Deployable to Azure via Bicep.
+>
+> **Status:** ✅ Backend Dockerfile (Python 3.12-slim, 4 Uvicorn workers). Frontend Dockerfile (multi-stage node+nginx). 5 Bicep modules (container-app-env, container-app, acr, openai, bing-search). main.bicep orchestrating 6 Azure resources. Dev/prod parameter files. 74 infra validation tests (+ 4 Docker skipped without Docker).
 
-| # | Task | Owner | Depends On |
-|---|------|-------|------------|
-| 5.1 | Dockerfile for backend | Infra | 1.5 |
-| 5.2 | Bicep modules (ACR, Container Apps, OpenAI, Bing) | Infra | — |
-| 5.3 | `main.bicep` orchestration | Infra | 5.2 |
-| 5.4 | Parameter files (dev, prod) | Infra | 5.3 |
+| # | Task | Owner | Status |
+|---|------|-------|--------|
+| 5.1 | Dockerfile for backend | Infra | ✅ Done |
+| 5.2 | Bicep modules (ACR, Container Apps, OpenAI, Bing) | Infra | ✅ Done |
+| 5.3 | `main.bicep` orchestration | Infra | ✅ Done |
+| 5.4 | Parameter files (dev, prod) | Infra | ✅ Done |
 
 ### Phase 6 — Polish (Build Last)
 

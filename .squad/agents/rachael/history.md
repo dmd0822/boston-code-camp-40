@@ -170,3 +170,98 @@
 - **Error Handling Flow** — Comprehensive error recovery (network, validation, partial data)
 - **Performance Monitoring** — Telemetry, logging, error tracking architecture
 - **Feature Flags** — A/B testing, gradual rollout architecture
+
+### 2026-03-12 — Phase 5 Infrastructure Diagrams Complete (Rachael)
+
+**Status:** ✅ COMPLETE — Architecture and CI/CD deployment diagrams updated
+
+**Diagrams Updated:**
+
+1. **Infrastructure Architecture Diagram (Diagram #7)**
+   - Updated with real Bicep resource names:
+     - Azure Container Registry (ACR)
+     - Container Apps Environment
+     - Backend Container App
+     - Frontend Container App
+     - Azure OpenAI Service
+     - Bing Search Service
+   - Shows complete deployment topology
+   - Demonstrates data flow between services
+   - Includes secret management connections
+   - Color-coded for clarity (Blue: user-facing, Yellow: orchestration, Purple: backend, Red: external, Green: success)
+
+2. **CI/CD Deployment Pipeline Diagram (NEW)**
+   - Complete GitHub Actions workflow visualization
+   - Build stages:
+     - Source code commit trigger
+     - Docker build for backend (Python 3.12)
+     - Docker build for frontend (Node + Nginx)
+     - Push images to Azure Container Registry
+   - Deployment stages:
+     - Dev environment deployment
+     - Production environment deployment
+   - Bicep infrastructure provisioning flow
+   - Secret management (GitHub Secrets → Azure)
+   - Shows end-to-end deployment pipeline
+   - Includes failure points and rollback paths
+
+**Diagram Features:**
+
+- Clear component relationships and dependencies
+- Data flow paths showing Docker build → push → deployment
+- Deployment sequence for dev/prod environments
+- Service integration points (OpenAI, Bing Search)
+- Environment variable wiring
+- CI/CD orchestration via GitHub Actions
+- Automated vs manual approval gates (recommended for future)
+
+**File Updates:**
+
+- **docs/diagrams.md** — Added CI/CD Deployment Pipeline diagram
+- **docs/architecture.md** — Updated infrastructure section with diagram references
+- **README.md** — Updated Architecture Decisions section with new diagrams
+- **infra/README.md** — Cross-referenced deployment diagram
+
+**Diagram Maintenance Documentation:**
+
+- Version control: Diagrams updated whenever infrastructure changes
+- Update procedure: Edit Mermaid syntax in docs/diagrams.md
+- Color conventions: Consistent with existing diagrams (Blue, Yellow, Purple, Red, Green)
+- Naming: Uses actual resource names from Bicep modules
+- Validation: All Mermaid syntax tested and valid
+- Cross-referencing: Updated all relevant documentation
+
+**Integration with Existing Diagrams:**
+
+1. System Overview — Shows Azure infrastructure layer
+2. Orchestration Sequence — Shows backend two-phase execution
+3. Data Flow — Shows POST /api/itinerary request handling
+4. Frontend Component Architecture — Shows React component structure
+5. API Flow — Shows FastAPI routes and error handling
+6. Class Diagram — Shows Pydantic models
+7. Infrastructure Architecture — Updated with real Bicep resources
+8. CI/CD Deployment Pipeline — NEW: Shows build and deployment workflow
+9. Error Handling — Shows error recovery flows
+
+**Complete Diagram Ecosystem:**
+
+- 9 Mermaid diagrams in docs/diagrams.md
+- All diagrams cross-linked from docs/architecture.md
+- Consistent styling and color coding
+- Maintenance guide for future updates
+- Clear source attribution (derived from architecture.md)
+
+**Documentation Cross-Links:**
+
+- Updated `docs/architecture.md` — Infrastructure and CI/CD references
+- Updated `README.md` — Architecture Decisions section
+- Updated `infra/README.md` — Deployment workflow reference
+- All diagrams validated for correct Mermaid syntax
+
+**Notes for Phase 6+:**
+
+- **Monitoring Architecture** — Add diagram for Application Insights, logging, alerting
+- **Security Architecture** — Add diagram for authentication, authorization, secret management
+- **Performance Architecture** — Add diagram for caching, CDN, optimization strategies
+- **Disaster Recovery** — Add diagram for backup, failover, recovery procedures
+- **Scaling Architecture** — Add diagram for load balancing, auto-scaling, multi-region

@@ -9,7 +9,8 @@ How to decide who handles what.
 | Architecture & design | Deckard | System design, agent orchestration, API contracts, scope decisions |
 | Python backend & agents | Batty | Agent implementation, API endpoints, web search grounding, data models |
 | React frontend & UI | Pris | Components, itinerary display, customer profile forms, API consumption |
-| Infrastructure & deployment | Gaff | Bicep templates, Dockerfile, CI/CD, Azure resources |
+| Infrastructure & deployment | Gaff | Bicep templates, Dockerfile, Azure resources |
+| CI/CD & GitHub Actions | Leon | Workflow templates, deployment pipelines, Docker build/push |
 | Diagrams & visualization | Rachael | Mermaid diagrams, architecture visuals, flow charts, sequence diagrams |
 | Code review | Deckard | Review PRs, check quality, suggest improvements |
 | Testing | Zhora | Write tests, find edge cases, hallucination validation |

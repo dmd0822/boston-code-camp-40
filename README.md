@@ -1,15 +1,15 @@
 # Travel Agent Application
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Backend Tests](https://img.shields.io/badge/backend_tests-107_passing-brightgreen)](tests/)
+[![Backend & Infra Tests](https://img.shields.io/badge/backend%26infra_tests-181_passing-brightgreen)](tests/)
 [![Frontend Tests](https://img.shields.io/badge/frontend_tests-66_passing-brightgreen)](frontend/)
-[![Total Tests](https://img.shields.io/badge/total_tests-173_passing-brightgreen)](#running-tests)
+[![Total Tests](https://img.shields.io/badge/total_tests-247_passing-brightgreen)](#running-tests)
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
 A FastAPI backend application that orchestrates four specialized AI agents (General, POI, Event, Weather) to create comprehensive travel itineraries. Each agent is grounded in Bing Web Search to ensure factual accuracy. The application is built with Microsoft Agent Framework and deployed on Azure Container Apps.
 
-**Status:** ✅ **Phase 4 Complete** — Full backend + frontend MVP ready. All 173 tests passing (107 backend + 66 frontend).
+**Status:** ✅ **Phase 5 Complete** — Full backend + frontend + infrastructure ready. All 247 tests passing (107 backend + 74 infra + 66 frontend).
 
 ## Technology Stack
 
@@ -22,8 +22,9 @@ A FastAPI backend application that orchestrates four specialized AI agents (Gene
 | **Config** | Pydantic Settings + `python-dotenv` | Environment-based config (no hard-coded secrets) |
 | **Testing** | pytest | Unit & integration tests |
 | **Frontend** | React 18 + Vite + TypeScript | Complete SPA: CustomerForm, ItineraryView, components, hooks, API client (204 KB JS, 64 KB gzipped) |
-| **Infrastructure** | Azure Bicep | IaC for Container Apps, registries, OpenAI, and search APIs |
-| **Language** | Python 3.x | Backend runtime |
+| **Containers** | Docker | Production-ready Dockerfiles (Python 3.12-slim backend, multi-stage node+nginx frontend) |
+| **Infrastructure** | Azure Bicep | IaC: 5 modules (container-app-env, container-app, acr, openai, bing-search) + main.bicep orchestration |
+| **Language** | Python 3.x | Backend runtime (3.12-slim in container) |
 
 ## System Architecture
 
@@ -155,10 +156,11 @@ boston-code-camp-40/
 ├── README.md                  # This file
 ├── LICENSE                    # MIT License
 ├── requirements.txt           # Python dependencies (backend)
-├── Dockerfile                 # Container build for backend
+├── Dockerfile                 # Backend container (Python 3.12-slim, 4 Uvicorn workers)
 ├── .env.template              # Environment variables template
+├── pytest.ini                 # Pytest configuration
 │
-├── frontend/                  # React + TypeScript frontend (Phase 4)
+├── frontend/                  # React + TypeScript frontend (Phase 4) ✅
 │   ├── src/
 │   │   ├── api/               # API client (itineraryApi.ts)
 │   │   ├── components/        # 5 React components (Form, View, Cards, Loading, Error)
@@ -166,6 +168,8 @@ boston-code-camp-40/
 │   │   ├── types/             # TypeScript type definitions (mirrored from backend)
 │   │   ├── App.tsx            # Main app component
 │   │   └── main.tsx           # Entry point
+│   ├── Dockerfile             # Multi-stage frontend container (node + nginx)
+│   ├── nginx.conf             # SPA routing, /api proxy, gzip compression
 │   ├── package.json           # npm dependencies & scripts
 │   ├── vite.config.ts         # Vite build config (includes /api proxy)
 │   ├── tsconfig.json          # TypeScript config
@@ -213,9 +217,18 @@ boston-code-camp-40/
 │   ├── 03-features/           # Feature data (unused in MVP)
 │   └── 04-predictions/        # Predictions (unused in MVP)
 │
-├── infra/                     # Infrastructure as Code (Bicep)
-│   ├── main.bicep             # Main deployment template
-│   └── modules/               # Modular Bicep templates (Container Apps, registries, etc.)
+├── infra/                     # Infrastructure as Code (Phase 5) ✅
+│   ├── main.bicep             # Main deployment template (orchestrates 6 Azure resources)
+│   ├── modules/               # 5 Bicep modules
+│   │   ├── container-app-env.bicep
+│   │   ├── container-app.bicep
+│   │   ├── acr.bicep
+│   │   ├── openai.bicep
+│   │   └── bing-search.bicep
+│   ├── main.parameters.dev.json    # Dev parameter file
+│   ├── main.parameters.prod.json   # Prod parameter file
+│   ├── README.md              # Full deployment guide & validation tests
+│   └── tests/                 # 74 infra validation tests (+ 4 Docker skipped without Docker)
 │
 ├── notebooks/                 # EDA & exploration (not production code)
 └── reports/                   # Generated reports and outputs
@@ -291,6 +304,19 @@ pytest tests/unit/test_general_agent.py
 pytest -v
 ```
 
+### Infrastructure Tests (74 passing, 4 Docker build skipped)
+
+```bash
+# Run all infra tests
+pytest infra/tests/
+
+# Run without Docker build tests
+pytest infra/tests/ -m "not docker_build"
+
+# Run with coverage
+pytest infra/tests/ --cov=infra --cov-report=html
+```
+
 ### Frontend Tests (66 passing)
 
 ```bash
@@ -308,8 +334,35 @@ npm run test -- --watch
 
 See [tests/README.md](tests/README.md) for test structure and coverage details.
 
-**Total: 173 tests passing (107 backend + 66 frontend)**
+**Total: 247 tests passing (107 backend + 74 infrastructure + 66 frontend)**
 
+
+## Infrastructure (Phase 5) ✅
+
+The application is fully containerized and deployed on Azure Container Apps via Bicep infrastructure-as-code.
+
+### Containerization
+
+**Backend Docker** (`Dockerfile`):
+- Base: `python:3.12-slim`
+- Uvicorn with 4 workers for production workloads
+- Health check endpoint enabled
+- Non-root user for security
+
+**Frontend Docker** (`frontend/Dockerfile`):
+- Multi-stage build: Node 20 builder → nginx runtime
+- nginx.conf handles SPA routing, `/api/*` proxy to backend, gzip compression
+- Build: 204 KB JS (64 KB gzipped), 7.8 KB CSS
+
+### Azure Deployment
+
+**Bicep Infrastructure:**
+- **5 Modular Templates** — container-app-env, container-app, acr (Azure Container Registry), openai, bing-search
+- **main.bicep** — Orchestrates all 6 Azure resources with full secret wiring
+- **Parameter Files** — Separate dev/prod configurations
+- **74 Validation Tests** — Infrastructure validation (+ 4 Docker build tests)
+
+**Deployment Guide:** See [infra/README.md](infra/README.md) for step-by-step instructions.
 
 ## Development
 

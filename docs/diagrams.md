@@ -15,7 +15,8 @@ This document provides visual representations of the Travel Agent Application ar
 5. [Pydantic Model Class Diagram](#5-pydantic-model-class-diagram)
 6. [API Request/Response Flow](#6-api-requestresponse-flow)
 7. [Infrastructure Diagram](#7-infrastructure-diagram)
-8. [Error Handling Flow](#8-error-handling-flow)
+8. [CI/CD Deployment Pipeline](#8-cicd-deployment-pipeline)
+9. [Error Handling Flow](#9-error-handling-flow)
 
 ---
 
@@ -404,52 +405,181 @@ Azure deployment architecture showing all managed services and container apps.
 
 ```mermaid
 graph TB
-    subgraph "Azure Resource Group"
-        subgraph "Container Apps Environment"
-            FrontendApp[Azure Container App<br/>Frontend - React SPA<br/>nginx serving static files]
-            BackendApp[Azure Container App<br/>Backend - FastAPI<br/>Python + Uvicorn]
+    subgraph "Azure Resource Group: travel-agent-{env}-rg"
+        subgraph "Container Apps Environment: travel-agent-{env}-env"
+            FrontendApp[Azure Container App<br/>travel-agent-{env}-frontend<br/>React SPA + nginx<br/>Port 80]
+            BackendApp[Azure Container App<br/>travel-agent-{env}-backend<br/>FastAPI + Uvicorn<br/>Port 8000]
         end
         
-        ACR[Azure Container Registry<br/>Stores Docker images<br/>frontend:latest, backend:latest]
+        ACR[Azure Container Registry<br/>travelagent{env}acr<br/>Basic tier<br/>Images: backend:0.1.0, frontend:0.1.0]
         
-        OpenAI[Azure OpenAI Service<br/>GPT-4o deployment<br/>S0 tier]
+        OpenAI[Azure OpenAI Service<br/>travel-agent-{env}-openai<br/>GPT-4o deployment<br/>S0 tier, Capacity: 10]
         
-        Bing[Bing Web Search<br/>Cognitive Services<br/>S1 tier]
-        
-        KeyVault[Azure Key Vault<br/>Secrets Management<br/>Optional for MVP]
+        Bing[Bing Web Search API<br/>travel-agent-{env}-bing<br/>Cognitive Services<br/>S1 tier]
     end
     
     Internet[Internet Users] -->|HTTPS| FrontendApp
-    FrontendApp -->|/api/* proxy| BackendApp
+    FrontendApp -->|BACKEND_URL env var| BackendApp
     
-    BackendApp -->|API calls| OpenAI
-    BackendApp -->|search_web tool| Bing
+    BackendApp -->|AZURE_OPENAI_ENDPOINT<br/>AZURE_OPENAI_API_KEY| OpenAI
+    BackendApp -->|BING_SEARCH_ENDPOINT<br/>BING_SEARCH_API_KEY| Bing
     
-    ACR -.->|Pull images| FrontendApp
-    ACR -.->|Pull images| BackendApp
-    
-    BackendApp -.->|Read secrets| KeyVault
+    ACR -.->|Pull images<br/>ACR admin credentials| FrontendApp
+    ACR -.->|Pull images<br/>ACR admin credentials| BackendApp
     
     style FrontendApp fill:#e1f5ff
     style BackendApp fill:#fff4e1
     style OpenAI fill:#ffe1e1
     style Bing fill:#ffe1e1
     style ACR fill:#f0e1ff
-    style KeyVault fill:#e1ffe1
 ```
 
 **Resource Summary:**
-- **Container Apps**: Consumption tier (auto-scale)
-- **Azure OpenAI**: GPT-4o model deployment
-- **Bing Search**: S1 tier (grounding for all agents)
-- **ACR**: Basic tier (image storage)
-- **Key Vault**: Optional (MVP uses env vars)
+- **Container Apps Environment**: `travel-agent-{env}-env` — Auto-scale (min 0, max 3 replicas)
+- **Backend App**: 0.5 CPU, 1Gi memory — Environment secrets for OpenAI and Bing keys
+- **Frontend App**: 0.25 CPU, 0.5Gi memory — BACKEND_URL injected at runtime
+- **Azure OpenAI**: `gpt-4o` deployment with model version `2024-05-13`
+- **Bing Search**: S1 tier for web grounding (used by all agents)
+- **ACR**: Basic tier — Naming convention: no hyphens (`travelagent{env}acr`)
 
-**IaC:** All infrastructure defined in Bicep templates (`infra/main.bicep` and modules)
+**Security:**
+- API keys stored as Container App secrets (no Key Vault for MVP)
+- ACR uses admin credentials (managed by Bicep)
+- All secrets injected as environment variables at runtime
+
+**IaC:** All infrastructure defined in Bicep templates (`infra/main.bicep` and `infra/modules/`)
+
+**Resource Naming:** `travel-agent-{environmentName}-{resource}` (e.g., `travel-agent-dev-backend`)
 
 ---
 
-## 8. Error Handling Flow
+## 8. CI/CD Deployment Pipeline
+
+GitHub Actions workflow for building, testing, and deploying the Travel Agent application to Azure.
+
+```mermaid
+graph TD
+    Trigger{Trigger Event} -->|Push to main| CI[CI Stage: Continuous Integration]
+    Trigger -->|Manual dispatch| CI
+    Trigger -->|Pull Request| CI
+    
+    subgraph "CI Stage"
+        CI --> Checkout[Checkout Code]
+        Checkout --> Lint[Run Linters]
+        Lint --> BackendTest[Backend Tests<br/>pytest + coverage]
+        Lint --> FrontendTest[Frontend Tests<br/>vitest]
+        
+        BackendTest --> BuildBackend[Build Backend Image<br/>docker build backend]
+        FrontendTest --> BuildFrontend[Build Frontend Image<br/>docker build frontend]
+        
+        BuildBackend --> PushBackend[Push to ACR<br/>backend:version tag]
+        BuildFrontend --> PushFrontend[Push to ACR<br/>frontend:version tag]
+        
+        PushBackend --> TagLatest[Tag as :latest]
+        PushFrontend --> TagLatest
+    end
+    
+    TagLatest --> CDCheck{Environment?}
+    
+    subgraph "CD Stage: Development"
+        CDCheck -->|Dev Branch/Auto| DeployDevInfra[Deploy Bicep<br/>main.bicep → dev env]
+        
+        DeployDevInfra --> DevSecrets[Inject Secrets<br/>GitHub Secrets → Azure]
+        
+        DevSecrets --> UpdateDevBackend[Update Backend Container<br/>travel-agent-dev-backend]
+        DevSecrets --> UpdateDevFrontend[Update Frontend Container<br/>travel-agent-dev-frontend]
+        
+        UpdateDevBackend --> DevVerify[Health Check<br/>GET /api/health]
+        UpdateDevFrontend --> DevVerify
+        
+        DevVerify --> DevComplete[✓ Dev Deployed]
+    end
+    
+    subgraph "CD Stage: Production"
+        CDCheck -->|Prod/Tagged Release| ManualApproval[Manual Approval Gate<br/>GitHub Environment Protection]
+        
+        ManualApproval -->|Approved| DeployProdInfra[Deploy Bicep<br/>main.bicep → prod env]
+        ManualApproval -->|Rejected| AbortDeploy[Abort Deployment]
+        
+        DeployProdInfra --> ProdSecrets[Inject Secrets<br/>GitHub Secrets → Azure]
+        
+        ProdSecrets --> UpdateProdBackend[Update Backend Container<br/>travel-agent-prod-backend]
+        ProdSecrets --> UpdateProdFrontend[Update Frontend Container<br/>travel-agent-prod-frontend]
+        
+        UpdateProdBackend --> ProdVerify[Health Check<br/>GET /api/health]
+        UpdateProdFrontend --> ProdVerify
+        
+        ProdVerify --> ProdComplete[✓ Prod Deployed]
+    end
+    
+    subgraph "Secrets Flow"
+        GitHubSecrets[GitHub Repository Secrets] --> AzureCLI[Azure CLI Authentication<br/>AZURE_CREDENTIALS]
+        GitHubSecrets --> BicepParams[Bicep Parameters<br/>OPENAI_KEY, BING_KEY]
+        
+        AzureCLI --> AzureAuth[az login --service-principal]
+        BicepParams --> DeployCommand[az deployment group create]
+    end
+    
+    style CI fill:#e1f5ff
+    style DeployDevInfra fill:#fff4e1
+    style DeployProdInfra fill:#fff4e1
+    style ManualApproval fill:#f0e1ff
+    style DevComplete fill:#e1ffe1
+    style ProdComplete fill:#e1ffe1
+    style AbortDeploy fill:#ffe1e1
+    style GitHubSecrets fill:#f0e1ff
+```
+
+**Pipeline Stages:**
+
+1. **CI Stage (Continuous Integration):**
+   - Triggered on: `push` to `main`, `pull_request`, or `workflow_dispatch`
+   - Linting: `ruff` (Python), `eslint` (TypeScript)
+   - Testing: `pytest` (backend with coverage), `vitest` (frontend)
+   - Build Docker images: `travel-agent-backend` and `travel-agent-frontend`
+   - Push to ACR: Tag with version (e.g., `0.1.0`) and `:latest`
+
+2. **CD Stage: Development:**
+   - Auto-deploy on merge to `main`
+   - Deploy Bicep templates: `infra/main.bicep` with `environmentName=dev`
+   - Update Container Apps with new images from ACR
+   - Verify deployment: Health check at `/api/health`
+
+3. **CD Stage: Production:**
+   - Triggered by: Tagged release (e.g., `v0.1.0`)
+   - **Manual approval required** (GitHub Environment protection rule)
+   - Deploy Bicep templates: `infra/main.bicep` with `environmentName=prod`
+   - Update Container Apps with new images from ACR
+   - Verify deployment: Health check at `/api/health`
+
+**Secrets Management:**
+
+GitHub Repository Secrets → Azure CLI → Bicep Deployment
+
+Required GitHub Secrets:
+- `AZURE_CREDENTIALS`: Service principal JSON for `az login`
+- `AZURE_SUBSCRIPTION_ID`: Target Azure subscription
+- `AZURE_OPENAI_API_KEY`: Passed to Bicep as parameter
+- `BING_SEARCH_API_KEY`: Passed to Bicep as parameter
+- `ACR_USERNAME`, `ACR_PASSWORD`: For pushing Docker images
+
+**Bicep Parameter Flow:**
+```bash
+az deployment group create \
+  --resource-group travel-agent-dev-rg \
+  --template-file infra/main.bicep \
+  --parameters environmentName=dev \
+  --parameters openaiApiKey=${{ secrets.AZURE_OPENAI_API_KEY }} \
+  --parameters bingSearchApiKey=${{ secrets.BING_SEARCH_API_KEY }}
+```
+
+**Deployment Verification:**
+- Health check endpoint: `GET https://travel-agent-{env}-backend.azurecontainerapps.io/api/health`
+- Expected response: `{"status": "healthy", "version": "0.1.0"}`
+
+---
+
+## 9. Error Handling Flow
 
 How the system handles failures at different layers of the agent pipeline.
 

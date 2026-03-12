@@ -64,6 +64,22 @@ Current Phase 1–3 coverage:
 - ✅ Full orchestration flow (General Agent → POI/Event/Weather fan-out)
 - ✅ API endpoint integration tests
 
+### Infrastructure Tests (74 passing, 4 Docker build tests skipped)
+
+Phase 5 coverage:
+- ✅ Bicep template validation (all 5 modules)
+- ✅ Azure resource declarations (Container Apps, ACR, OpenAI, Bing Search)
+- ✅ Parameter file syntax and schema
+- ✅ Secret wiring and environment variables
+- ✅ Dev/prod configuration separation
+- ⊘ Docker build tests (skipped without Docker daemon)
+
+To run infra tests:
+```bash
+pytest infra/tests/               # All tests
+pytest infra/tests/ -m "not docker_build"  # Exclude Docker build tests
+```
+
 ### Frontend Tests (66 passing)
 
 Located in `frontend/` with 8 test files:
@@ -81,7 +97,7 @@ npm run test -- --coverage     # With coverage report
 npm run test -- --watch        # Watch mode
 ```
 
-**Total: 173 tests passing (107 backend + 66 frontend)**
+**Total: 247 tests passing (107 backend + 74 infrastructure + 66 frontend)**
 
 ## What to Test
 

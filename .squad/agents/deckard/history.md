@@ -246,3 +246,87 @@ Updated all 16 README.md files across the repository to reflect the Travel Agent
 - Performance optimization guide to be added to frontend/README.md
 - Accessibility guidelines (WCAG 2.1 AA) to be documented
 - CI/CD pipeline documentation (GitHub Actions, deployment) to be added
+
+### 2026-03-12 — Phase 5 Documentation Updates Complete (Deckard)
+
+**Status:** ✅ COMPLETE — All project documentation updated for Phase 5
+
+**Files Updated:**
+
+1. **README.md (root)**
+   - Added Infrastructure section to Project Structure
+   - Documented Azure Bicep modules (container-app-env, container-app, acr, openai, bing-search)
+   - Added "Running on Azure" subsection to Quick Start
+   - Updated Project Status to mark Phase 5 Infrastructure complete
+   - Added Infrastructure Technology Stack section
+   - Cross-referenced infra/README.md for deployment guide
+
+2. **docs/architecture.md**
+   - Marked Phase 5 "Infrastructure" as COMPLETE
+   - Updated Infrastructure section with Azure Container Apps architecture
+   - Documented Bicep module organization and deployment workflow
+   - Added Dockerfile architecture for backend and frontend
+   - Updated test coverage to 247 tests (107 backend + 74 infra + 66 frontend)
+   - Updated Phase Roadmap with Phase 5 completion marker
+   - Added infrastructure deployment workflow details
+
+3. **infra/README.md (NEW FILE)**
+   - Comprehensive Azure infrastructure documentation
+   - Prerequisites section (Azure CLI, Bicep CLI)
+   - Quick start deployment for dev and prod environments
+   - Detailed Bicep module descriptions:
+     - Container Apps Environment setup
+     - Backend/Frontend Container App configuration
+     - Azure Container Registry (image storage)
+     - Azure OpenAI Service integration
+     - Bing Search Service integration
+   - Parameter file explanation (dev vs prod)
+   - Environment variables and secrets management
+   - Troubleshooting section for common issues
+   - Next steps for Phase 6 (CI/CD automation)
+
+4. **tests/README.md**
+   - Added Infrastructure Tests subsection
+   - Documented 74 infrastructure validation tests
+   - Listed test categories (Dockerfiles, Bicep, parameters, Docker build)
+   - Updated total test coverage: 247 tests
+   - Added infrastructure test running instructions
+   - Cross-referenced with infra/README.md
+
+5. **src/README.md**
+   - Added reference to Phase 5 infrastructure completion
+   - Noted Dockerfile location (root) for containerization
+   - Added deployment section referencing infra/README.md
+   - Updated total test count to 247
+
+**Documentation Patterns:**
+
+- All READMEs cross-reference `docs/architecture.md` as single source of truth
+- Consistent structure: Overview → Setup → Key Concepts → Examples → Next Steps
+- Practical examples (Azure CLI commands, Bicep parameter syntax, Docker build)
+- Clear distinction between phases (Phase 5 complete, Phase 6 planned)
+- Markdown code blocks with ``` formatting consistency
+
+**Cross-References Added:**
+
+- Root README links to infra/README.md
+- infra/README.md links to docs/architecture.md
+- tests/README.md includes infrastructure test patterns
+- docs/architecture.md references infra/README.md
+- All phase completion markers updated
+
+**Infrastructure Documentation Features:**
+
+- Step-by-step Azure deployment instructions
+- Environment-specific parameter files (dev, prod)
+- Secret management guidelines (no Key Vault in MVP, Container App env vars)
+- Troubleshooting guide for common Azure errors
+- Integration with GitHub Actions (Phase 6 reference)
+
+**Notes for Phase 6+:**
+
+- GitHub Actions CI/CD documentation to be added
+- Monitoring and observability guide (Application Insights)
+- Cost optimization documentation
+- Disaster recovery and backup procedures
+- Production hardening checklist
