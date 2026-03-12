@@ -1,8 +1,13 @@
+targetScope = 'subscription'
+
 @description('The environment name (e.g., dev, staging, prod)')
 param environmentName string = 'dev'
 
 @description('Azure region for all resources')
-param location string = resourceGroup().location
+param location string
+
+@description('The name of the resource group to deploy into (created if it does not exist)')
+param resourceGroupName string = 'rg-travel-agent-${environmentName}'
 
 @description('The version of the GPT-4o model to deploy')
 param openaiModelVersion string = '2024-05-13'
@@ -18,10 +23,20 @@ var tags = {
 }
 
 // ========================================
+// Resource Group
+// ========================================
+resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: resourceGroupName
+  location: location
+  tags: tags
+}
+
+// ========================================
 // Module 1: Azure Container Registry
 // ========================================
 module acr 'modules/acr.bicep' = {
   name: 'acr-deployment'
+  scope: rg
   params: {
     name: replace('${baseName}-acr', '-', '')  // ACR names cannot contain hyphens
     location: location
@@ -35,6 +50,7 @@ module acr 'modules/acr.bicep' = {
 // ========================================
 module containerAppEnv 'modules/container-app-env.bicep' = {
   name: 'container-app-env-deployment'
+  scope: rg
   params: {
     name: '${baseName}-env'
     location: location
@@ -47,6 +63,7 @@ module containerAppEnv 'modules/container-app-env.bicep' = {
 // ========================================
 module openai 'modules/openai.bicep' = {
   name: 'openai-deployment'
+  scope: rg
   params: {
     name: '${baseName}-openai'
     location: location
@@ -64,6 +81,7 @@ module openai 'modules/openai.bicep' = {
 // ========================================
 module aiFoundryHub 'modules/ai-foundry-hub.bicep' = {
   name: 'ai-foundry-hub-deployment'
+  scope: rg
   params: {
     name: '${baseName}-ai-hub'
     location: location
@@ -76,6 +94,7 @@ module aiFoundryHub 'modules/ai-foundry-hub.bicep' = {
 // ========================================
 module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
   name: 'ai-foundry-project-deployment'
+  scope: rg
   params: {
     name: '${baseName}-ai-project'
     location: location
@@ -89,6 +108,7 @@ module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
 // ========================================
 module openaiConnection 'modules/ai-foundry-connection.bicep' = {
   name: 'openai-connection-deployment'
+  scope: rg
   params: {
     hubName: aiFoundryHub.outputs.name
     connectionName: 'openai-connection'
@@ -103,6 +123,7 @@ module openaiConnection 'modules/ai-foundry-connection.bicep' = {
 // ========================================
 module bingSearch 'modules/bing-search.bicep' = {
   name: 'bing-search-deployment'
+  scope: rg
   params: {
     name: '${baseName}-bing'
     skuName: 'S1'
@@ -115,6 +136,7 @@ module bingSearch 'modules/bing-search.bicep' = {
 // ========================================
 module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
+  scope: rg
   params: {
     name: '${baseName}-backend'
     location: location
@@ -173,6 +195,7 @@ module backendApp 'modules/container-app.bicep' = {
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
+  scope: rg
   params: {
     name: '${baseName}-frontend'
     location: location
@@ -200,6 +223,9 @@ module frontendApp 'modules/container-app.bicep' = {
 // ========================================
 // Outputs
 // ========================================
+@description('The name of the resource group')
+output resourceGroupName string = rg.name
+
 @description('The URL of the frontend application')
 output frontendUrl string = frontendApp.outputs.url
 

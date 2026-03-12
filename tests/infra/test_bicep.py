@@ -38,6 +38,40 @@ class TestMainBicep:
         assert re.search(r"param\s+location\s+string", main_bicep_content), \
             "main.bicep should have location parameter"
 
+    def test_target_scope_is_subscription(self, main_bicep_content: str):
+        """Test that main.bicep targets subscription scope."""
+        assert re.search(r"targetScope\s*=\s*'subscription'", main_bicep_content), \
+            "main.bicep should have targetScope = 'subscription'"
+
+    def test_has_resource_group_name_parameter(self, main_bicep_content: str):
+        """Test that main.bicep has resourceGroupName parameter."""
+        assert re.search(r"param\s+resourceGroupName\s+string", main_bicep_content), \
+            "main.bicep should have resourceGroupName parameter"
+
+    def test_resource_group_default_naming(self, main_bicep_content: str):
+        """Test that resourceGroupName defaults to rg-travel-agent-{env}."""
+        assert re.search(
+            r"param\s+resourceGroupName\s+string\s*=\s*'rg-travel-agent-\$\{environmentName\}'",
+            main_bicep_content
+        ), "resourceGroupName should default to 'rg-travel-agent-${environmentName}'"
+
+    def test_creates_resource_group(self, main_bicep_content: str):
+        """Test that main.bicep creates a resource group resource."""
+        assert re.search(
+            r"resource\s+\w+\s+'Microsoft\.Resources/resourceGroups@",
+            main_bicep_content
+        ), "main.bicep should create a Microsoft.Resources/resourceGroups resource"
+
+    def test_modules_scoped_to_resource_group(self, main_bicep_content: str):
+        """Test that modules are scoped to the resource group."""
+        assert "scope: rg" in main_bicep_content, \
+            "Modules should be scoped to the resource group"
+
+    def test_outputs_resource_group_name(self, main_bicep_content: str):
+        """Test that main.bicep outputs the resource group name."""
+        assert re.search(r"output\s+resourceGroupName\s+string", main_bicep_content), \
+            "main.bicep should output resourceGroupName"
+
     def test_has_project_tag(self, main_bicep_content: str):
         """Test that main.bicep defines project tag."""
         assert re.search(r"project:\s*['\"]travel-agent['\"]", main_bicep_content), \
@@ -584,3 +618,23 @@ class TestParameterFiles:
         """Test that prod.bicepparam uses environmentName = 'prod'."""
         assert re.search(r"environmentName\s*=\s*['\"]prod['\"]", prod_param_content), \
             "prod.bicepparam should set environmentName = 'prod'"
+
+    def test_dev_has_resource_group_name(self, dev_param_content: str):
+        """Test that dev.bicepparam sets resourceGroupName."""
+        assert re.search(r"resourceGroupName\s*=", dev_param_content), \
+            "dev.bicepparam should set resourceGroupName"
+
+    def test_prod_has_resource_group_name(self, prod_param_content: str):
+        """Test that prod.bicepparam sets resourceGroupName."""
+        assert re.search(r"resourceGroupName\s*=", prod_param_content), \
+            "prod.bicepparam should set resourceGroupName"
+
+    def test_dev_resource_group_uses_dev(self, dev_param_content: str):
+        """Test that dev resource group name contains 'dev'."""
+        assert re.search(r"resourceGroupName\s*=\s*'[^']*dev[^']*'", dev_param_content), \
+            "dev.bicepparam resourceGroupName should contain 'dev'"
+
+    def test_prod_resource_group_uses_prod(self, prod_param_content: str):
+        """Test that prod resource group name contains 'prod'."""
+        assert re.search(r"resourceGroupName\s*=\s*'[^']*prod[^']*'", prod_param_content), \
+            "prod.bicepparam resourceGroupName should contain 'prod'"
