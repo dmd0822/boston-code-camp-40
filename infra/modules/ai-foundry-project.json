@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "3512945400847386713"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the AI Foundry Project"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for the resource"
+      }
+    },
+    "hubId": {
+      "type": "string",
+      "metadata": {
+        "description": "The resource ID of the parent AI Foundry Hub"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to the resource"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.MachineLearningServices/workspaces",
+      "apiVersion": "2024-04-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "kind": "Project",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "friendlyName": "[parameters('name')]",
+        "description": "AI Foundry Project for Travel Agent Application",
+        "hubResourceId": "[parameters('hubId')]",
+        "publicNetworkAccess": "Enabled"
+      }
+    }
+  ],
+  "outputs": {
+    "id": {
+      "type": "string",
+      "metadata": {
+        "description": "The resource ID of the AI Foundry Project"
+      },
+      "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name'))]"
+    },
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the AI Foundry Project"
+      },
+      "value": "[parameters('name')]"
+    },
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "The principal ID of the project managed identity"
+      },
+      "value": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name')), '2024-04-01', 'full').identity.principalId]"
+    }
+  }
+}

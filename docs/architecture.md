@@ -405,30 +405,37 @@ auto-generate them from the OpenAPI spec.)
 ### Azure Resources
 
 ```text
-┌──────────────────────────────────────────────────────────┐
-│                   Azure Resource Group                    │
-│                                                          │
-│  ┌─────────────────────┐  ┌────────────────────────────┐ │
-│  │ Azure Container App │  │ Azure Container App        │ │
-│  │ (Frontend — static  │  │ (Backend — FastAPI)        │ │
-│  │  SPA served by      │  │                            │ │
-│  │  nginx or SWA)      │  │ Env vars:                  │ │
-│  └─────────┬───────────┘  │  AZURE_OPENAI_ENDPOINT     │ │
-│            │              │  AZURE_OPENAI_API_KEY       │ │
-│            │ /api/*       │  BING_SEARCH_API_KEY        │ │
-│            └──────────────▶  BING_SEARCH_ENDPOINT       │ │
-│                           └────────────┬───────────────┘ │
-│                                        │                  │
-│  ┌─────────────────────┐  ┌───────────▼────────────────┐ │
-│  │ Azure OpenAI        │  │ Bing Web Search            │ │
-│  │ (GPT-4o deployment) │  │ (Cognitive Services)       │ │
-│  └─────────────────────┘  └────────────────────────────┘ │
-│                                                          │
-│  ┌─────────────────────┐                                 │
-│  │ Azure Container     │                                 │
-│  │ Registry (ACR)      │                                 │
-│  └─────────────────────┘                                 │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                   Azure Resource Group                      │
+│                                                            │
+│  ┌─────────────────────┐  ┌────────────────────────────┐   │
+│  │ Azure Container App │  │ Azure Container App        │   │
+│  │ (Frontend — static  │  │ (Backend — FastAPI)        │   │
+│  │  SPA served by      │  │                            │   │
+│  │  nginx)             │  │ Env vars:                  │   │
+│  └─────────┬───────────┘  │  AZURE_OPENAI_ENDPOINT     │   │
+│            │              │  AZURE_OPENAI_API_KEY       │   │
+│            │ /api/*       │  BING_SEARCH_API_KEY        │   │
+│            └──────────────▶  BING_SEARCH_ENDPOINT       │   │
+│                           └────────────┬───────────────┘   │
+│                                        │                    │
+│  ┌─────────────────────┐  ┌───────────▼────────────────┐   │
+│  │ Azure OpenAI        │  │ Bing Web Search            │   │
+│  │ (GPT-4o deployment) │  │ (Cognitive Services)       │   │
+│  └──────────┬──────────┘  └────────────────────────────┘   │
+│             │                                                │
+│             │ registered                                     │
+│             ▼                                                │
+│  ┌─────────────────────┐  ┌────────────────────────────┐   │
+│  │ AI Foundry Hub      │◀─│ AI Foundry Project         │   │
+│  │ (Management)        │  │ (Workspace)                │   │
+│  └─────────────────────┘  └────────────────────────────┘   │
+│                                                            │
+│  ┌─────────────────────┐                                   │
+│  │ Azure Container     │                                   │
+│  │ Registry (ACR)      │                                   │
+│  └─────────────────────┘                                   │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ### Bicep Modules (in `infra/`)
@@ -442,6 +449,9 @@ infra/
 │   ├── acr.bicep               # Azure Container Registry
 │   ├── openai.bicep            # Azure OpenAI account + deployment
 │   ├── bing-search.bicep       # Bing Search resource
+│   ├── ai-foundry-hub.bicep    # AI Foundry Hub for resource management
+│   ├── ai-foundry-project.bicep # AI Foundry Project workspace
+│   ├── ai-foundry-connection.bicep # OpenAI connection registration
 │   └── keyvault.bicep          # Key Vault for secrets (optional MVP)
 └── parameters/
     ├── dev.bicepparam          # Dev environment parameters
@@ -456,6 +466,8 @@ infra/
 | Azure Container Apps (×2) | Consumption | Backend (FastAPI) + Frontend (nginx/SPA) |
 | Azure Container Registry | Basic | Store Docker images |
 | Azure OpenAI | S0 | GPT-4o model deployment |
+| Azure AI Foundry Hub | Standard | Centralized AI resource management and governance |
+| Azure AI Foundry Project | Standard | Workspace for AI workflows and monitoring |
 | Bing Web Search | S1 | Web search grounding for all agents |
 | Key Vault (optional) | Standard | Secret management |
 

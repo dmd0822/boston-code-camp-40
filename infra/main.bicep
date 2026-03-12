@@ -60,7 +60,46 @@ module openai 'modules/openai.bicep' = {
 }
 
 // ========================================
-// Module 4: Bing Search API
+// Module 4: AI Foundry Hub
+// ========================================
+module aiFoundryHub 'modules/ai-foundry-hub.bicep' = {
+  name: 'ai-foundry-hub-deployment'
+  params: {
+    name: '${baseName}-ai-hub'
+    location: location
+    tags: tags
+  }
+}
+
+// ========================================
+// Module 5: AI Foundry Project
+// ========================================
+module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
+  name: 'ai-foundry-project-deployment'
+  params: {
+    name: '${baseName}-ai-project'
+    location: location
+    hubId: aiFoundryHub.outputs.id
+    tags: tags
+  }
+}
+
+// ========================================
+// Module 6: OpenAI Connection to AI Foundry Hub
+// ========================================
+module openaiConnection 'modules/ai-foundry-connection.bicep' = {
+  name: 'openai-connection-deployment'
+  params: {
+    hubName: aiFoundryHub.outputs.name
+    connectionName: 'openai-connection'
+    openaiEndpoint: openai.outputs.endpoint
+    openaiApiKey: openai.outputs.key
+    openaiResourceId: openai.outputs.id
+  }
+}
+
+// ========================================
+// Module 7: Bing Search API
 // ========================================
 module bingSearch 'modules/bing-search.bicep' = {
   name: 'bing-search-deployment'
@@ -72,7 +111,7 @@ module bingSearch 'modules/bing-search.bicep' = {
 }
 
 // ========================================
-// Module 5: Backend Container App
+// Module 8: Backend Container App
 // ========================================
 module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
@@ -130,7 +169,7 @@ module backendApp 'modules/container-app.bicep' = {
 }
 
 // ========================================
-// Module 6: Frontend Container App
+// Module 9: Frontend Container App
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
@@ -175,3 +214,9 @@ output openaiEndpoint string = openai.outputs.endpoint
 
 @description('The Bing Search endpoint')
 output bingSearchEndpoint string = bingSearch.outputs.endpoint
+
+@description('The name of the AI Foundry Hub')
+output foundryHubName string = aiFoundryHub.outputs.name
+
+@description('The name of the AI Foundry Project')
+output foundryProjectName string = aiFoundryProject.outputs.name

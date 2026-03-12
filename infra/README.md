@@ -7,25 +7,34 @@ This directory contains the Infrastructure as Code (IaC) for deploying the Trave
 The deployment creates the following Azure resources:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Resource Group                          │
-│                                                              │
-│  ┌──────────────────┐          ┌────────────────────┐      │
-│  │  Azure Container │          │  Azure Container   │      │
-│  │    Registry      │──images──│   Apps Environment │      │
-│  │   (ACR)          │          │                    │      │
-│  └──────────────────┘          │  ┌──────────────┐  │      │
-│                                 │  │   Frontend   │  │      │
-│  ┌──────────────────┐          │  │ Container App│  │      │
-│  │  Azure OpenAI    │          │  └──────┬───────┘  │      │
-│  │  (GPT-4o)        │─────────▶│         │          │      │
-│  └──────────────────┘          │  ┌──────▼───────┐  │      │
-│                                 │  │   Backend    │  │      │
-│  ┌──────────────────┐          │  │ Container App│  │      │
-│  │  Bing Search API │─────────▶│  └──────────────┘  │      │
-│  └──────────────────┘          └────────────────────┘      │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Resource Group                               │
+│                                                                      │
+│  ┌──────────────────┐          ┌────────────────────┐              │
+│  │  Azure Container │          │  Azure Container   │              │
+│  │    Registry      │──images──│   Apps Environment │              │
+│  │   (ACR)          │          │                    │              │
+│  └──────────────────┘          │  ┌──────────────┐  │              │
+│                                 │  │   Frontend   │  │              │
+│  ┌──────────────────┐          │  │ Container App│  │              │
+│  │  Azure OpenAI    │◀─────────│  └──────┬───────┘  │              │
+│  │  (GPT-4o)        │  runtime │         │          │              │
+│  └────────┬─────────┘          │  ┌──────▼───────┐  │              │
+│           │                    │  │   Backend    │  │              │
+│           │ connection         │  │ Container App│  │              │
+│           │                    │  └──────────────┘  │              │
+│           ▼                    └────────────────────┘              │
+│  ┌──────────────────┐                                              │
+│  │  AI Foundry Hub  │          ┌──────────────────┐               │
+│  │  (Management)    │◀─────────│  AI Foundry      │               │
+│  │                  │          │  Project         │               │
+│  └──────────────────┘          └──────────────────┘               │
+│                                                                      │
+│  ┌──────────────────┐                                              │
+│  │  Bing Search API │──────────▶ Backend Container App            │
+│  └──────────────────┘                                              │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Components
@@ -35,7 +44,8 @@ The deployment creates the following Azure resources:
 3. **Frontend Container App**: React SPA served via nginx (port 80)
 4. **Backend Container App**: FastAPI application on Uvicorn (port 8000)
 5. **Azure OpenAI**: GPT-4o model deployment for AI capabilities
-6. **Bing Search API**: Web search integration
+6. **Azure AI Foundry**: Hub and project for AI resource governance and management
+7. **Bing Search API**: Web search integration
 
 ### Key Features
 
@@ -44,6 +54,37 @@ The deployment creates the following Azure resources:
 - **Managed ingress**: HTTPS endpoints with automatic certificates
 - **Secret management**: Secure injection of API keys via Container Apps secrets
 - **No authentication/database**: Stateless API for MVP simplicity
+
+## Azure AI Foundry
+
+**Azure AI Foundry** provides a hub-and-project model for managing AI resources in a centralized, governed manner. It's the recommended approach for enterprise AI deployments on Azure.
+
+### What is AI Foundry?
+
+- **Hub**: Central workspace that manages shared resources (storage, key vault, connections)
+- **Project**: Individual development environment linked to a hub, used for organizing AI workflows
+- **Connections**: Managed links to AI services (e.g., Azure OpenAI) visible in the Foundry portal
+
+### How It Works in This Application
+
+1. The **Azure OpenAI resource** is still deployed directly and used by the backend at runtime
+2. The **AI Foundry Hub** is created to manage the OpenAI connection
+3. The **AI Foundry Project** provides a workspace for viewing and managing AI assets
+4. An **OpenAI connection** is registered in the hub for governance and visibility
+
+### Key Benefits
+
+- **Centralized management**: View all AI resources in one place (Azure AI Studio)
+- **Governance**: Track usage, quotas, and costs across AI services
+- **Team collaboration**: Share connections and configurations across projects
+- **Future-ready**: Easily add prompt flow, evaluations, and other Foundry features
+
+### Important Note
+
+The backend application **still connects directly to Azure OpenAI** using the endpoint and API key. AI Foundry is a **management layer**, not a runtime dependency. This means:
+- The app doesn't call Foundry APIs at runtime
+- Foundry provides governance, monitoring, and portal access
+- If Foundry is removed, the app continues to work (it only loses management features)
 
 ## Prerequisites
 
@@ -274,6 +315,45 @@ Creates Bing Search API resource (global location).
 **Outputs:**
 - `id`, `endpoint`, `key`
 
+### `modules/ai-foundry-hub.bicep`
+Creates Azure AI Foundry Hub for AI resource management.
+
+**Parameters:**
+- `name`: Hub name
+- `location`: Azure region
+- `storageAccountId`: Optional storage account (auto-created if not provided)
+- `keyVaultId`: Optional key vault (auto-created if not provided)
+- `tags`: Resource tags
+
+**Outputs:**
+- `id`, `name`, `principalId`
+
+### `modules/ai-foundry-project.bicep`
+Creates Azure AI Foundry Project linked to a hub.
+
+**Parameters:**
+- `name`: Project name
+- `location`: Azure region
+- `hubId`: Parent hub resource ID
+- `tags`: Resource tags
+
+**Outputs:**
+- `id`, `name`, `principalId`
+
+### `modules/ai-foundry-connection.bicep`
+Registers an Azure OpenAI connection in the AI Foundry Hub.
+
+**Parameters:**
+- `hubName`: Name of the parent hub
+- `connectionName`: Connection name
+- `openaiEndpoint`: Azure OpenAI endpoint URL
+- `openaiApiKey`: Azure OpenAI API key (secure)
+- `openaiResourceId`: OpenAI resource ID
+- `tags`: Resource tags
+
+**Outputs:**
+- `id`, `name`
+
 ## Cost Estimates (Dev Tier)
 
 Approximate monthly costs for dev environment with minimal usage:
@@ -283,6 +363,8 @@ Approximate monthly costs for dev environment with minimal usage:
 | Azure Container Apps | Consumption | $0-5 (pay per vCPU-second) |
 | Azure Container Registry | Basic | $5 |
 | Azure OpenAI (GPT-4o) | Standard S0 | $5-50 (pay per token) |
+| Azure AI Foundry Hub | Standard | $0 (no base cost) |
+| Azure AI Foundry Project | Standard | $0 (no base cost) |
 | Bing Search API | S1 | $5-10 (pay per transaction) |
 | **Total** | | **~$15-70/month** |
 
@@ -290,6 +372,7 @@ Approximate monthly costs for dev environment with minimal usage:
 - Container Apps scale to zero when idle (no cost)
 - OpenAI cost depends on token usage
 - Bing Search S1 tier: 1,000 transactions/month included
+- AI Foundry Hub/Project have no base cost; only underlying storage/key vault incur charges
 - Actual costs may vary based on usage patterns
 
 ## Production Deployment

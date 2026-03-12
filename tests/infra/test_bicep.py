@@ -306,6 +306,232 @@ class TestBingSearchModule:
             "Module should have output declarations"
 
 
+class TestAIFoundryHub:
+    """Tests for the ai-foundry-hub.bicep module."""
+
+    @pytest.fixture
+    def module_path(self) -> Path:
+        """Path to ai-foundry-hub.bicep module."""
+        return Path(__file__).parent.parent.parent / "infra" / "modules" / "ai-foundry-hub.bicep"
+
+    @pytest.fixture
+    def module_content(self, module_path: Path) -> str:
+        """Read module content."""
+        return module_path.read_text()
+
+    def test_hub_module_exists(self, module_path: Path):
+        """Test that ai-foundry-hub.bicep exists."""
+        assert module_path.exists(), "ai-foundry-hub.bicep does not exist"
+        assert module_path.stat().st_size > 0, "ai-foundry-hub.bicep is empty"
+
+    def test_hub_has_name_param(self, module_content: str):
+        """Test that module has name parameter."""
+        assert re.search(r"param\s+name\s+string", module_content), \
+            "Module should have name parameter"
+
+    def test_hub_has_location_param(self, module_content: str):
+        """Test that module has location parameter."""
+        assert re.search(r"param\s+location\s+string", module_content), \
+            "Module should have location parameter"
+
+    def test_hub_resource_type(self, module_content: str):
+        """Test that module uses Microsoft.MachineLearningServices/workspaces resource type."""
+        assert "Microsoft.MachineLearningServices/workspaces" in module_content, \
+            "Module should use Microsoft.MachineLearningServices/workspaces resource type"
+
+    def test_hub_kind_is_hub(self, module_content: str):
+        """Test that kind is 'Hub'."""
+        assert re.search(r"kind:\s*['\"]Hub['\"]", module_content), \
+            "Module should set kind: 'Hub'"
+
+    def test_hub_has_system_identity(self, module_content: str):
+        """Test that identity type is SystemAssigned."""
+        assert re.search(r"type:\s*['\"]SystemAssigned['\"]", module_content), \
+            "Module should have identity type: 'SystemAssigned'"
+
+    def test_hub_outputs_id(self, module_content: str):
+        """Test that module outputs id."""
+        assert re.search(r"output\s+id\s+string", module_content), \
+            "Module should output id"
+
+    def test_hub_outputs_name(self, module_content: str):
+        """Test that module outputs name."""
+        assert re.search(r"output\s+name\s+string", module_content), \
+            "Module should output name"
+
+    def test_hub_outputs_principal_id(self, module_content: str):
+        """Test that module outputs principalId."""
+        assert re.search(r"output\s+principalId\s+string", module_content), \
+            "Module should output principalId"
+
+
+class TestAIFoundryProject:
+    """Tests for the ai-foundry-project.bicep module."""
+
+    @pytest.fixture
+    def module_path(self) -> Path:
+        """Path to ai-foundry-project.bicep module."""
+        return Path(__file__).parent.parent.parent / "infra" / "modules" / "ai-foundry-project.bicep"
+
+    @pytest.fixture
+    def module_content(self, module_path: Path) -> str:
+        """Read module content."""
+        return module_path.read_text()
+
+    def test_project_module_exists(self, module_path: Path):
+        """Test that ai-foundry-project.bicep exists."""
+        assert module_path.exists(), "ai-foundry-project.bicep does not exist"
+        assert module_path.stat().st_size > 0, "ai-foundry-project.bicep is empty"
+
+    def test_project_has_name_param(self, module_content: str):
+        """Test that module has name parameter."""
+        assert re.search(r"param\s+name\s+string", module_content), \
+            "Module should have name parameter"
+
+    def test_project_has_hub_id_param(self, module_content: str):
+        """Test that module has hubId parameter."""
+        assert re.search(r"param\s+hubId\s+string", module_content), \
+            "Module should have hubId parameter"
+
+    def test_project_resource_type(self, module_content: str):
+        """Test that module uses Microsoft.MachineLearningServices/workspaces resource type."""
+        assert "Microsoft.MachineLearningServices/workspaces" in module_content, \
+            "Module should use Microsoft.MachineLearningServices/workspaces resource type"
+
+    def test_project_kind_is_project(self, module_content: str):
+        """Test that kind is 'Project'."""
+        assert re.search(r"kind:\s*['\"]Project['\"]", module_content), \
+            "Module should set kind: 'Project'"
+
+    def test_project_has_system_identity(self, module_content: str):
+        """Test that identity type is SystemAssigned."""
+        assert re.search(r"type:\s*['\"]SystemAssigned['\"]", module_content), \
+            "Module should have identity type: 'SystemAssigned'"
+
+    def test_project_links_to_hub(self, module_content: str):
+        """Test that project links to hub via hubResourceId."""
+        assert "hubResourceId" in module_content, \
+            "Module should have hubResourceId in properties"
+
+    def test_project_outputs_id(self, module_content: str):
+        """Test that module outputs id."""
+        assert re.search(r"output\s+id\s+string", module_content), \
+            "Module should output id"
+
+    def test_project_outputs_name(self, module_content: str):
+        """Test that module outputs name."""
+        assert re.search(r"output\s+name\s+string", module_content), \
+            "Module should output name"
+
+
+class TestAIFoundryConnection:
+    """Tests for the ai-foundry-connection.bicep module."""
+
+    @pytest.fixture
+    def module_path(self) -> Path:
+        """Path to ai-foundry-connection.bicep module."""
+        return Path(__file__).parent.parent.parent / "infra" / "modules" / "ai-foundry-connection.bicep"
+
+    @pytest.fixture
+    def module_content(self, module_path: Path) -> str:
+        """Read module content."""
+        return module_path.read_text()
+
+    def test_connection_module_exists(self, module_path: Path):
+        """Test that ai-foundry-connection.bicep exists."""
+        assert module_path.exists(), "ai-foundry-connection.bicep does not exist"
+        assert module_path.stat().st_size > 0, "ai-foundry-connection.bicep is empty"
+
+    def test_connection_has_hub_name_param(self, module_content: str):
+        """Test that module has hubName parameter."""
+        assert re.search(r"param\s+hubName\s+string", module_content), \
+            "Module should have hubName parameter"
+
+    def test_connection_has_openai_endpoint_param(self, module_content: str):
+        """Test that module has openaiEndpoint parameter."""
+        assert re.search(r"param\s+openaiEndpoint\s+string", module_content), \
+            "Module should have openaiEndpoint parameter"
+
+    def test_connection_has_secure_api_key(self, module_content: str):
+        """Test that openaiApiKey parameter has @secure() decorator."""
+        assert re.search(r"@secure\(\)\s*param\s+openaiApiKey\s+string", module_content, re.MULTILINE), \
+            "Module should have @secure() decorator on openaiApiKey parameter"
+
+    def test_connection_category_is_azure_openai(self, module_content: str):
+        """Test that category is 'AzureOpenAI'."""
+        assert re.search(r"category:\s*['\"]AzureOpenAI['\"]", module_content), \
+            "Module should set category: 'AzureOpenAI'"
+
+    def test_connection_auth_type(self, module_content: str):
+        """Test that authType is 'ApiKey'."""
+        assert re.search(r"authType:\s*['\"]ApiKey['\"]", module_content), \
+            "Module should set authType: 'ApiKey'"
+
+    def test_connection_is_shared(self, module_content: str):
+        """Test that isSharedToAll is true."""
+        assert re.search(r"isSharedToAll:\s*true", module_content), \
+            "Module should set isSharedToAll: true"
+
+    def test_connection_outputs_id(self, module_content: str):
+        """Test that module outputs id."""
+        assert re.search(r"output\s+id\s+string", module_content), \
+            "Module should output id"
+
+
+class TestMainBicepFoundryIntegration:
+    """Tests for AI Foundry integration in main.bicep."""
+
+    @pytest.fixture
+    def main_bicep_path(self) -> Path:
+        """Path to main.bicep file."""
+        return Path(__file__).parent.parent.parent / "infra" / "main.bicep"
+
+    @pytest.fixture
+    def main_bicep_content(self, main_bicep_path: Path) -> str:
+        """Read main.bicep content."""
+        return main_bicep_path.read_text()
+
+    def test_main_deploys_foundry_hub(self, main_bicep_content: str):
+        """Test that main.bicep deploys AI Foundry Hub module."""
+        assert "modules/ai-foundry-hub.bicep" in main_bicep_content, \
+            "main.bicep should reference modules/ai-foundry-hub.bicep"
+
+    def test_main_deploys_foundry_project(self, main_bicep_content: str):
+        """Test that main.bicep deploys AI Foundry Project module."""
+        assert "modules/ai-foundry-project.bicep" in main_bicep_content, \
+            "main.bicep should reference modules/ai-foundry-project.bicep"
+
+    def test_main_deploys_openai_connection(self, main_bicep_content: str):
+        """Test that main.bicep deploys OpenAI connection module."""
+        assert "modules/ai-foundry-connection.bicep" in main_bicep_content, \
+            "main.bicep should reference modules/ai-foundry-connection.bicep"
+
+    def test_main_hub_name_convention(self, main_bicep_content: str):
+        """Test that hub uses baseName-ai-hub naming convention."""
+        assert re.search(r"name:\s*['\"]?\$\{baseName\}-ai-hub['\"]?", main_bicep_content), \
+            "main.bicep should use ${baseName}-ai-hub naming for hub"
+
+    def test_main_project_depends_on_hub(self, main_bicep_content: str):
+        """Test that project gets hubId from hub outputs."""
+        assert re.search(r"hubId:\s*aiFoundryHub\.outputs\.id", main_bicep_content), \
+            "main.bicep should pass aiFoundryHub.outputs.id to project"
+
+    def test_main_connection_depends_on_hub(self, main_bicep_content: str):
+        """Test that connection gets hubName from hub outputs."""
+        assert re.search(r"hubName:\s*aiFoundryHub\.outputs\.name", main_bicep_content), \
+            "main.bicep should pass aiFoundryHub.outputs.name to connection"
+
+    def test_main_outputs_foundry_hub_name(self, main_bicep_content: str):
+        """Test that main.bicep outputs foundryHubName."""
+        assert re.search(r"output\s+foundryHubName\s+string", main_bicep_content), \
+            "main.bicep should output foundryHubName"
+
+    def test_main_outputs_foundry_project_name(self, main_bicep_content: str):
+        """Test that main.bicep outputs foundryProjectName."""
+        assert re.search(r"output\s+foundryProjectName\s+string", main_bicep_content), \
+            "main.bicep should output foundryProjectName"
+
+
 class TestParameterFiles:
     """Tests for Bicep parameter files."""
 

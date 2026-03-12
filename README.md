@@ -1,15 +1,15 @@
 # Travel Agent Application
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Backend & Infra Tests](https://img.shields.io/badge/backend%26infra_tests-181_passing-brightgreen)](tests/)
+[![Backend & Infra Tests](https://img.shields.io/badge/backend%26infra_tests-215_passing-brightgreen)](tests/)
 [![Frontend Tests](https://img.shields.io/badge/frontend_tests-66_passing-brightgreen)](frontend/)
-[![Total Tests](https://img.shields.io/badge/total_tests-247_passing-brightgreen)](#running-tests)
+[![Total Tests](https://img.shields.io/badge/total_tests-281_passing-brightgreen)](#running-tests)
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
 A FastAPI backend application that orchestrates four specialized AI agents (General, POI, Event, Weather) to create comprehensive travel itineraries. Each agent is grounded in Bing Web Search to ensure factual accuracy. The application is built with Microsoft Agent Framework and deployed on Azure Container Apps.
 
-**Status:** ✅ **Phase 5 Complete** — Full backend + frontend + infrastructure ready. All 247 tests passing (107 backend + 74 infra + 66 frontend).
+**Status:** ✅ **Phase 5 Complete + AI Foundry** — Full backend + frontend + infrastructure with Azure AI Foundry governance. All 281 tests passing (107 backend + 108 infra + 66 frontend).
 
 ## Technology Stack
 
@@ -23,7 +23,8 @@ A FastAPI backend application that orchestrates four specialized AI agents (Gene
 | **Testing** | pytest | Unit & integration tests |
 | **Frontend** | React 18 + Vite + TypeScript | Complete SPA: CustomerForm, ItineraryView, components, hooks, API client (204 KB JS, 64 KB gzipped) |
 | **Containers** | Docker | Production-ready Dockerfiles (Python 3.12-slim backend, multi-stage node+nginx frontend) |
-| **Infrastructure** | Azure Bicep | IaC: 5 modules (container-app-env, container-app, acr, openai, bing-search) + main.bicep orchestration |
+| **Infrastructure** | Azure Bicep | IaC: 8 modules (container-app-env, container-app, acr, openai, bing-search, ai-foundry-hub, ai-foundry-project, ai-foundry-connection) + main.bicep orchestration |
+| **AI Governance** | Azure AI Foundry | Hub and project for centralized AI resource management and monitoring |
 | **Language** | Python 3.x | Backend runtime (3.12-slim in container) |
 
 ## System Architecture
@@ -357,8 +358,8 @@ The application is fully containerized and deployed on Azure Container Apps via 
 ### Azure Deployment
 
 **Bicep Infrastructure:**
-- **5 Modular Templates** — container-app-env, container-app, acr (Azure Container Registry), openai, bing-search
-- **main.bicep** — Orchestrates all 6 Azure resources with full secret wiring
+- **8 Modular Templates** — container-app-env, container-app, acr (Azure Container Registry), openai, bing-search, ai-foundry-hub, ai-foundry-project, ai-foundry-connection
+- **main.bicep** — Orchestrates all 9 Azure resources with full secret wiring and AI Foundry governance layer
 - **Parameter Files** — Separate dev/prod configurations
 - **74 Validation Tests** — Infrastructure validation (+ 4 Docker build tests)
 

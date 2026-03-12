@@ -401,7 +401,7 @@ graph TD
 
 ## 7. Infrastructure Diagram
 
-Azure deployment architecture showing all managed services and container apps.
+Azure deployment architecture showing all managed services and container apps with AI Foundry governance layer.
 
 ```mermaid
 graph TB
@@ -416,12 +416,22 @@ graph TB
         OpenAI[Azure OpenAI Service<br/>travel-agent-{env}-openai<br/>GPT-4o deployment<br/>S0 tier, Capacity: 10]
         
         Bing[Bing Web Search API<br/>travel-agent-{env}-bing<br/>Cognitive Services<br/>S1 tier]
+        
+        subgraph "AI Foundry: Management & Governance Layer"
+            AIHub[AI Foundry Hub<br/>travel-agent-{env}-aihub<br/>Central governance & monitoring]
+            AIProject[AI Foundry Project<br/>travel-agent-{env}-aiproject<br/>Development workspace]
+            AIConnection[OpenAI Connection<br/>Links Hub to OpenAI resource]
+            
+            AIHub -->|manages| AIProject
+            AIHub -->|configures| AIConnection
+            AIConnection -.->|references| OpenAI
+        end
     end
     
     Internet[Internet Users] -->|HTTPS| FrontendApp
     FrontendApp -->|BACKEND_URL env var| BackendApp
     
-    BackendApp -->|AZURE_OPENAI_ENDPOINT<br/>AZURE_OPENAI_API_KEY| OpenAI
+    BackendApp -->|Direct connection<br/>AZURE_OPENAI_ENDPOINT<br/>AZURE_OPENAI_API_KEY| OpenAI
     BackendApp -->|BING_SEARCH_ENDPOINT<br/>BING_SEARCH_API_KEY| Bing
     
     ACR -.->|Pull images<br/>ACR admin credentials| FrontendApp
@@ -432,6 +442,9 @@ graph TB
     style OpenAI fill:#ffe1e1
     style Bing fill:#ffe1e1
     style ACR fill:#f0e1ff
+    style AIHub fill:#e1ffe1
+    style AIProject fill:#e1ffe1
+    style AIConnection fill:#e1ffe1
 ```
 
 **Resource Summary:**
@@ -441,6 +454,9 @@ graph TB
 - **Azure OpenAI**: `gpt-4o` deployment with model version `2024-05-13`
 - **Bing Search**: S1 tier for web grounding (used by all agents)
 - **ACR**: Basic tier — Naming convention: no hyphens (`travelagent{env}acr`)
+- **AI Foundry Hub**: Central governance and monitoring layer for AI resources
+- **AI Foundry Project**: Development workspace for managing AI deployments and experiments
+- **OpenAI Connection**: Managed connection from AI Foundry Hub to Azure OpenAI resource
 
 **Security:**
 - API keys stored as Container App secrets (no Key Vault for MVP)

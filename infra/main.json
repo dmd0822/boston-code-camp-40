@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "4589847517149822845"
+      "templateHash": "12723810040838037216"
     }
   },
   "parameters": {
@@ -424,6 +424,338 @@
           }
         }
       }
+    },
+    "aiFoundryHub": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "ai-foundry-hub-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-ai-hub', variables('baseName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "10912828174544021867"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the AI Foundry Hub"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for the resource"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            },
+            "storageAccountId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional storage account resource ID. If not provided, hub will auto-create storage"
+              }
+            },
+            "keyVaultId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional key vault resource ID. If not provided, hub will auto-create key vault"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.MachineLearningServices/workspaces",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "Hub",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "friendlyName": "[parameters('name')]",
+                "description": "AI Foundry Hub for Travel Agent Application",
+                "storageAccount": "[if(not(empty(parameters('storageAccountId'))), parameters('storageAccountId'), null())]",
+                "keyVault": "[if(not(empty(parameters('keyVaultId'))), parameters('keyVaultId'), null())]",
+                "publicNetworkAccess": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the AI Foundry Hub"
+              },
+              "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the AI Foundry Hub"
+              },
+              "value": "[parameters('name')]"
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal ID of the hub managed identity"
+              },
+              "value": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name')), '2024-04-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      }
+    },
+    "aiFoundryProject": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "ai-foundry-project-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-ai-project', variables('baseName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "hubId": {
+            "value": "[reference('aiFoundryHub').outputs.id.value]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "3512945400847386713"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the AI Foundry Project"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for the resource"
+              }
+            },
+            "hubId": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the parent AI Foundry Hub"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.MachineLearningServices/workspaces",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "Project",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "friendlyName": "[parameters('name')]",
+                "description": "AI Foundry Project for Travel Agent Application",
+                "hubResourceId": "[parameters('hubId')]",
+                "publicNetworkAccess": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the AI Foundry Project"
+              },
+              "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the AI Foundry Project"
+              },
+              "value": "[parameters('name')]"
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal ID of the project managed identity"
+              },
+              "value": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', parameters('name')), '2024-04-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "aiFoundryHub"
+      ]
+    },
+    "openaiConnection": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "openai-connection-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "hubName": {
+            "value": "[reference('aiFoundryHub').outputs.name.value]"
+          },
+          "connectionName": {
+            "value": "openai-connection"
+          },
+          "openaiEndpoint": {
+            "value": "[reference('openai').outputs.endpoint.value]"
+          },
+          "openaiApiKey": {
+            "value": "[listOutputsWithSecureValues('openai', '2025-04-01').key]"
+          },
+          "openaiResourceId": {
+            "value": "[reference('openai').outputs.id.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "9056846730061212002"
+            }
+          },
+          "parameters": {
+            "hubName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the AI Foundry Hub"
+              }
+            },
+            "connectionName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the connection"
+              }
+            },
+            "openaiEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure OpenAI endpoint URL"
+              }
+            },
+            "openaiApiKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The Azure OpenAI API key"
+              }
+            },
+            "openaiResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the Azure OpenAI account"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.MachineLearningServices/workspaces/connections",
+              "apiVersion": "2024-04-01",
+              "name": "[format('{0}/{1}', parameters('hubName'), parameters('connectionName'))]",
+              "properties": {
+                "category": "AzureOpenAI",
+                "target": "[parameters('openaiEndpoint')]",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[parameters('openaiApiKey')]"
+                },
+                "metadata": {
+                  "ApiType": "Azure",
+                  "ResourceId": "[parameters('openaiResourceId')]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the OpenAI connection"
+              },
+              "value": "[resourceId('Microsoft.MachineLearningServices/workspaces/connections', parameters('hubName'), parameters('connectionName'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the OpenAI connection"
+              },
+              "value": "[parameters('connectionName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "aiFoundryHub",
+        "openai"
+      ]
     },
     "bingSearch": {
       "type": "Microsoft.Resources/deployments",
@@ -1123,6 +1455,20 @@
         "description": "The Bing Search endpoint"
       },
       "value": "[reference('bingSearch').outputs.endpoint.value]"
+    },
+    "foundryHubName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the AI Foundry Hub"
+      },
+      "value": "[reference('aiFoundryHub').outputs.name.value]"
+    },
+    "foundryProjectName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the AI Foundry Project"
+      },
+      "value": "[reference('aiFoundryProject').outputs.name.value]"
     }
   }
 }
