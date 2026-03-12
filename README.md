@@ -1,0 +1,222 @@
+# ML Project Structure (Template)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+## Project Name and Description
+
+This repository is a lightweight, opinionated template for starting new machine learning projects.
+
+It emphasizes:
+
+- A **staged data layout** (raw → preprocessed → features → predictions)
+- **Pipelines as code** (feature engineering, training, inference) instead of ad-hoc scripts
+- **Explicit entry points** for training and inference (useful for CI, Docker, and scheduled runs)
+- **Config separated** from code to support local vs production behaviors
+- **Tests from day one** to keep refactors safe
+- **Infrastructure as Code** support via `infra/` for reproducible environments
+- **Agentic development support**: agent code lives in `src/`, and agent prompt artifacts live in `data/`
+
+## Technology Stack
+
+This template is intentionally minimal; you choose the libraries that fit your problem.
+
+- **Language:** Python (recommended)
+- **Environment management:** `venv` (recommended)
+- **Dependencies:** `pip` via `requirements.txt` (starter set included)
+- **Notebooks (optional):** `jupyter`, stored in `notebooks/`
+- **Containerization (optional):** Docker (a `Dockerfile` is present but currently empty)
+- **Testing (recommended):** `pytest`
+
+## Project Architecture
+
+At a high level, the project is organized around a simple ML lifecycle:
+
+```mermaid
+flowchart LR
+  A[data/01-raw] --> B[data/02-preprocessed]
+  B --> C[data/03-features]
+  C --> D[src/pipelines]
+  P[data/prompts] -. prompt artifacts .-> L[src/agents]
+  D --> E[data/04-predictions]
+  D --> K[reports]
+  D --> F[entry points]
+  G[config] --> D
+  L[src/agents] --> D
+  H[tests] --> D
+  I[notebooks] -. EDA & prototyping .-> D
+  J[infra] -. provisions runtime .-> F
+```
+
+- **Data is tracked by stage** in `data/`.
+- **Reusable, testable pipeline code** lives in `src/pipelines/`.
+- **Agentic development code** lives in `src/agents/`.
+- **Agent prompt artifacts** live in `data/prompts/`.
+- **Runnable scripts** (training/inference) live in `entrypoints/`.
+- **Configuration** lives in `config/` (e.g., local vs prod).
+- **Notebooks** are for exploration and experimentation, not production code.
+- **Infrastructure as Code** lives in `infra/`.
+
+Note: `.github/prompts/` is reserved for reusable GitHub Copilot prompt templates and should not be used as the runtime prompt store for agents.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.x installed
+- (Optional) Docker installed
+
+## Python Environment Setup
+
+This template assumes an isolated Python environment per project.
+
+1. Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+1. Activate it:
+
+```bash
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+1. Install dependencies:
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+1. (Optional) Register an IPython kernel for this env:
+
+```bash
+python -m ipykernel install --user --name ml-project-structure --display-name "Python (ml-project-structure)"
+```
+
+### Setup
+
+1. Set up your environment using the steps in the [Python Environment Setup](#python-environment-setup) section.
+
+1. Start implementing your project:
+
+- Add your training and inference scripts under `entrypoints/`.
+- Add pipeline logic under `src/pipelines/`.
+- Add tests under `tests/`.
+
+## Project Structure
+
+High-level layout:
+
+```text
+Dockerfile               # (Optional) Container build recipe (currently empty)
+LICENSE                  # Project license
+README.md                # This documentation
+requirements.txt         # Python dependencies
+config/                 # Configuration (e.g., local vs prod settings)
+data/
+  01-raw/               # Immutable raw inputs
+  02-preprocessed/      # Cleaned/standardized datasets
+  03-features/          # Feature matrices / engineered feature sets
+  04-predictions/       # Model outputs / predictions
+  prompts/              # Agent prompt artifacts (version-controlled)
+entrypoints/            # Executable scripts (training, inference, batch jobs)
+infra/                  # Infrastructure as Code (provisioning/deploy)
+notebooks/              # EDA and experiments (kept separate from prod code)
+reports/                # Generated reports (figures, summaries, artifacts)
+src/
+  agents/               # Agentic development/orchestration code
+  pipelines/            # Reusable ML pipelines (feature, train, infer)
+tests/                  # Unit/integration tests
+```
+
+See the folder-level docs for details:
+
+- [config/README.md](config/README.md)
+- [data/01-raw/README.md](data/01-raw/README.md)
+- [data/02-preprocessed/README.md](data/02-preprocessed/README.md)
+- [data/03-features/README.md](data/03-features/README.md)
+- [data/04-predictions/README.md](data/04-predictions/README.md)
+- [data/README.md](data/README.md)
+- [data/prompts/README.md](data/prompts/README.md)
+- [entry points/README.md](entrypoints/README.md)
+- [infra/README.md](infra/README.md)
+- [notebooks/README.md](notebooks/README.md)
+- [reports/README.md](reports/README.md)
+- [src/README.md](src/README.md)
+- [agents/README.md](src/agents/README.md)
+- [pipelines/README.md](src/pipelines/README.md)
+- [tests/README.md](tests/README.md)
+
+## Key Features
+
+- Clear staged `data/` pipeline (raw → preprocessed → features → predictions)
+- Pipelines as reusable code (`src/pipelines/`) instead of one-off scripts
+- Explicit operational entry points (`entrypoints/`) to simplify automation
+- Infrastructure as Code support (`infra/`) for reproducible environments
+- Separate configuration directory (`config/`) to avoid hard-coding behavior
+- Tests included from the start (`tests/`)
+- Notebooks separated from production code (`notebooks/`)
+
+## Development Workflow
+
+No single workflow is enforced, but the structure is designed to support a pragmatic ML loop:
+
+1. Explore and validate assumptions in `notebooks/`.
+2. Turn stable logic into pipelines in `src/pipelines/`.
+3. Create runnable scripts in `entrypoints/` for training/inference.
+4. Add/expand tests in `tests/` as pipelines stabilize.
+5. (Optional) Containerize entry points for reproducible runs.
+6. (Optional) Provision/deploy runtime resources via `infra/`.
+
+Branching strategy is not prescribed by this template; a common default is feature branches with pull requests into `main`.
+
+## Coding Standards
+
+Python code should follow:
+
+- PEP 8 formatting
+- Type hints where practical (`typing` module)
+- PEP 257 docstrings for public functions/classes
+- Small, composable functions with clear names
+- Tests for critical paths and edge cases
+
+If you want to enforce these standards automatically, consider adding tools like `ruff`/`black`/`mypy` and a CI workflow.
+
+## Testing
+
+This template includes a `tests/` directory so you can start testing early.
+
+Recommended approach:
+
+- Use `pytest` for unit tests
+- Keep pipelines modular so they’re easy to test
+- Cover edge cases (empty inputs, invalid schemas/types, large datasets)
+
+Example (once you add `pytest`):
+
+```bash
+pytest
+```
+
+## Contributing
+
+This repo is intended as a starting point. If you extend this template:
+
+- Keep the folder responsibilities consistent (pipelines vs entry points vs notebooks)
+- Update the relevant folder `README.md` when you add conventions
+- Prefer small, testable pipeline functions
+- Follow the Python coding standards described above
+
+If you add agentic development capabilities, also follow:
+
+- [`Agent.md`](Agent.md) (coding-agent operating rules)
+- [`Claud.md`](Claud.md) (LLM/repo onboarding + conventions)
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
