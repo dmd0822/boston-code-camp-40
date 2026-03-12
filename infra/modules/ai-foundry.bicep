@@ -20,7 +20,7 @@ param deploymentName string
 param modelSkuName string = 'GlobalStandard'
 
 @description('The capacity (TPM in thousands) for the deployment')
-param capacity int = 10
+param capacity int = 80
 
 @description('The name of the AI Foundry project')
 param projectName string

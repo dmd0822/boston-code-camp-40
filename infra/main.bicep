@@ -82,7 +82,7 @@ module aiFoundry 'modules/ai-foundry.bicep' = {
     modelName: 'gpt-4o'
     modelVersion: openaiModelVersion
     deploymentName: 'gpt-4o'
-    capacity: 10
+    capacity: 80
     tags: tags
   }
 }
