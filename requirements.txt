@@ -20,3 +20,19 @@ pytest-cov
 
 # Lint/format (optional but recommended)
 ruff
+
+# Microsoft Agent Framework
+agent-framework
+agent-framework-azure-ai
+agent-framework-orchestrations
+
+# Web API
+fastapi
+uvicorn[standard]
+
+# Configuration
+python-dotenv
+pydantic-settings
+
+# HTTP client
+httpx

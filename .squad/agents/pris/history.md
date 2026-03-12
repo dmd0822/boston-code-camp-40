@@ -25,8 +25,30 @@
 - **Infrastructure:** Azure Container Apps + Bicep IaC
 
 **Agent Responsibilities:**
-- **POI Agent:** Points of interest discovery and recommendations
-- **Grounding:** Uses shared `src/agents/tools/web_search.py` tool (mandatory search-first)
+- **Pris:** Build React frontend and integrate with backend API
+
+---
+
+### 2026-03-12 — Phase 1 Backend & Tests Complete (Team)
+
+**Status:** Ready for frontend development. Backend API is live with realistic mock data.
+
+**What Pris can do now:**
+- **Endpoint ready:** `POST /api/itinerary` returns full mock Lisbon+Porto response with realistic schema
+- **Health check:** `GET /api/health` for status monitoring
+- **Mock data structure:** All Pydantic models defined; response matches final schema
+- **No auth required:** MVP scope — build UI without authentication layer
+- **Port:** Backend runs on port 8000 (set CORS `allow_origins` in code if narrowing from `["*"]`)
+
+**API contract reference:**
+- Input: `POST /api/itinerary` body with CustomerProfile (interests, budget, travel_dates) and destination list
+- Output: Full ItineraryResponse with destinations → itineraries (days) → activities + POIs + events + weather
+- Schema file: `src/api/models/itinerary.py` (check for latest fields)
+
+**Frontend structure suggestion:**
+- Mirror data structures in TypeScript (manual sync for MVP; auto-gen from OpenAPI is post-MVP)
+- Form component for customer input (interests, budget, dates)
+- Itinerary display with day-by-day activities, POI cards, events, weather
 
 **Reference Document:** `docs/architecture.md` (37KB, comprehensive MVP architecture)
 

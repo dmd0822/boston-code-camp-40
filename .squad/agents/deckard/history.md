@@ -32,3 +32,24 @@
   - `data/prompts/` — agent system prompts
 - **Decisions written to:** `.squad/decisions/inbox/deckard-core-architecture.md`, `deckard-frontend-architecture.md`, `deckard-grounding-strategy.md`, `deckard-infrastructure.md`
 - **User preference:** Dave wants Microsoft Agent Framework specifically (not Semantic Kernel). Agents must be grounded in web search. MVP scope is strict — no auth, no persistence.
+
+### 2026-03-12 — Team Phase 1 Status (All Agents)
+
+**Phase 1 Foundation Sprint Complete** — Backend & Tests ready. Scribe finalized all logs and decisions.
+
+**Status by agent:**
+- **Batty:** ✅ All foundation files built and verified working
+- **Zhora:** ✅ 67 model tests passing, fixtures ready
+- **Deckard:** ✅ Architecture approved, decisions recorded
+- **Pris:** 🚀 Ready to build UI against `/api/itinerary` mock response
+- **Gaff:** 🚀 Ready to containerize `entrypoints/serve.py` (port 8000)
+
+**What's been recorded:**
+- Orchestration logs: `.squad/orchestration-log/2026-03-12T13-55-batty.md`, `.../zhora.md`
+- Session log: `.squad/log/2026-03-12T13-55-phase1-foundation.md`
+- Decisions merged: `.squad/decisions/decisions.md` (inbox cleared)
+
+**Open decisions awaiting input:**
+- **source_url optionality** (Zhora proposal) — awaits decision on grounding enforcement
+
+**Next phase:** Phase 2 agents (Batty wiring real agents, Zhora expanding to integration tests) can begin independently.

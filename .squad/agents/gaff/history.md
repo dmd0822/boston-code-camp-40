@@ -25,8 +25,26 @@
 - **Infrastructure:** Azure Container Apps + Bicep IaC
 
 **Agent Responsibilities:**
-- **Event Agent:** Festival and special event discovery/integration
-- **Grounding:** Uses shared `src/agents/tools/web_search.py` tool (mandatory search-first)
+- **Gaff:** Infrastructure and deployment (Azure Bicep, containerization, CI/CD)
+
+---
+
+### 2026-03-12 — Phase 1 Backend Foundation Ready (Team)
+
+**Status:** Backend code ready for containerization. Entrypoint defined.
+
+**What Gaff should know:**
+- **Docker target:** `entrypoints/serve.py` — the Uvicorn server entrypoint
+- **Port:** Listens on port 8000
+- **Environment variables:** See `.env.template` (Azure OpenAI, Bing Search keys, APP_VERSION)
+- **Python version:** Check `requirements.txt` for dependencies (fastapi, uvicorn, pydantic-settings, etc.)
+- **CMD suggestion:** `python entrypoints/serve.py` or `uvicorn src.api.app:create_app --host 0.0.0.0 --port 8000`
+- **Health check:** `GET /api/health` (returns 200 with status JSON)
+
+**Infrastructure next steps:**
+- Bicep modules in `infra/` are approved (see Deckard's decisions for Azure resources: Container Apps, OpenAI, Bing Search)
+- No Key Vault in MVP — secrets as Container App env vars
+- Frontend can use Container Apps or Azure Static Web Apps (decision deferred)
 
 **Reference Document:** `docs/architecture.md` (37KB, comprehensive MVP architecture)
 
