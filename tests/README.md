@@ -1,6 +1,6 @@
-# 	ests/ — Automated Tests
+# Tests — Automated Testing (Backend + Frontend)
 
-This folder contains all automated tests for the Travel Agent Application.
+This folder contains all automated tests for the Travel Agent backend. Frontend tests are in `frontend/` (see below).
 
 ## Folder Structure
 
@@ -54,12 +54,34 @@ pytest tests/integration/
 
 ## Test Coverage
 
-Current Phase 1 coverage:
+### Backend Tests (107 passing)
+
+Current Phase 1–3 coverage:
 - ✅ API models (CustomerProfile, Itinerary)
-- ✅ Orchestrator initialization
-- ✅ Agent factory patterns
-- 🚀 Full orchestration flow (Phase 2)
-- 🚀 Agent reasoning integration (Phase 2)
+- ✅ Orchestrator initialization and two-phase flow
+- ✅ Agent factory patterns and system prompt loading
+- ✅ Bing Web Search tool integration
+- ✅ Full orchestration flow (General Agent → POI/Event/Weather fan-out)
+- ✅ API endpoint integration tests
+
+### Frontend Tests (66 passing)
+
+Located in `frontend/` with 8 test files:
+- ✅ Component rendering tests (CustomerForm, ItineraryView, DestinationCard, LoadingState, ErrorState)
+- ✅ useItinerary hook state machine tests (idle → loading → success/error transitions)
+- ✅ API client tests (createItinerary, getHealth)
+- ✅ Form validation and error handling
+- ✅ Accessibility tests (ARIA labels, keyboard navigation)
+
+To run frontend tests:
+```bash
+cd frontend
+npm run test                    # Run all tests
+npm run test -- --coverage     # With coverage report
+npm run test -- --watch        # Watch mode
+```
+
+**Total: 173 tests passing (107 backend + 66 frontend)**
 
 ## What to Test
 

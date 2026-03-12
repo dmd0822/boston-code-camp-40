@@ -9,12 +9,13 @@ This document provides visual representations of the Travel Agent Application ar
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
-2. [Agent Orchestration Sequence](#2-agent-orchestration-sequence)
-3. [Data Flow Pipeline](#3-data-flow-pipeline)
-4. [Pydantic Model Class Diagram](#4-pydantic-model-class-diagram)
-5. [API Request/Response Flow](#5-api-requestresponse-flow)
-6. [Infrastructure Diagram](#6-infrastructure-diagram)
-7. [Error Handling Flow](#7-error-handling-flow)
+2. [Frontend Component Architecture](#2-frontend-component-architecture)
+3. [Agent Orchestration Sequence](#3-agent-orchestration-sequence)
+4. [Data Flow Pipeline](#4-data-flow-pipeline)
+5. [Pydantic Model Class Diagram](#5-pydantic-model-class-diagram)
+6. [API Request/Response Flow](#6-api-requestresponse-flow)
+7. [Infrastructure Diagram](#7-infrastructure-diagram)
+8. [Error Handling Flow](#8-error-handling-flow)
 
 ---
 
@@ -24,7 +25,7 @@ High-level architecture showing the complete system from React frontend through 
 
 ```mermaid
 graph TD
-    User[User Browser] -->|HTTPS| Frontend[React Frontend<br/>Vite + TypeScript]
+    User[User Browser] -->|HTTPS| Frontend[React Frontend<br/>Vite + TypeScript<br/>State-driven Components]
     Frontend -->|POST /api/itinerary| Backend[FastAPI Backend]
     Backend --> Orchestrator[Travel Orchestrator]
     
@@ -58,14 +59,87 @@ graph TD
 ```
 
 **Key Points:**
-- React frontend sends customer profile via REST API
+- React frontend with complete component architecture (see Frontend Component Architecture diagram)
 - Orchestrator coordinates two-phase agent execution
 - All agents grounded in Bing Web Search (mandatory search-first pattern)
 - Azure OpenAI (GPT-4o) provides reasoning for all agents
 
 ---
 
-## 2. Agent Orchestration Sequence
+## 2. Frontend Component Architecture
+
+Complete Phase 4 frontend component structure showing state management, conditional rendering, and API integration.
+
+```mermaid
+graph TD
+    App[App.tsx<br/>Root Component] -->|uses| UseItinerary[useItinerary Hook<br/>State Management]
+    
+    UseItinerary -->|manages states| States{Application State}
+    UseItinerary -->|calls| API[itineraryApi.ts<br/>API Client]
+    
+    States -->|idle| CustomerForm[CustomerForm Component<br/>User Input Form]
+    States -->|loading| LoadingState[LoadingState Component<br/>Spinner + Progress Text]
+    States -->|success| ItineraryView[ItineraryView Component<br/>Results Display]
+    States -->|error| ErrorState[ErrorState Component<br/>Error Message]
+    
+    CustomerForm -->|onSubmit| UseItinerary
+    ErrorState -->|retry| UseItinerary
+    
+    ItineraryView -->|maps| DestinationCards[DestinationCard Components<br/>One per Destination]
+    
+    subgraph "DestinationCard Content"
+        DestinationCards --> POIs[POI List<br/>Points of Interest]
+        DestinationCards --> Events[Event List<br/>Festivals & Activities]
+        DestinationCards --> Weather[Weather Widget<br/>Forecast Display]
+    end
+    
+    API -->|fetch POST| APIBoundary[/api/itinerary<br/>REST Endpoint]
+    APIBoundary -.->|200 OK JSON| API
+    APIBoundary -.->|4xx/5xx Error| API
+    
+    subgraph "State Transitions"
+        Idle[idle: Initial] --> Loading[loading: API Call]
+        Loading --> Success[success: Data Received]
+        Loading --> Error[error: Request Failed]
+        Error --> Idle2[idle: After Retry]
+    end
+    
+    style App fill:#e1f5ff
+    style UseItinerary fill:#fff4e1
+    style States fill:#f0e1ff
+    style ItineraryView fill:#e1ffe1
+    style CustomerForm fill:#e1f5ff
+    style LoadingState fill:#fff4e1
+    style ErrorState fill:#ffe1e1
+    style API fill:#f0e1ff
+    style APIBoundary fill:#ffe1e1
+```
+
+**Component Responsibilities:**
+
+1. **App.tsx**: Root component that renders based on `useItinerary` state
+2. **useItinerary Hook**: Manages application state lifecycle (idle → loading → success/error)
+3. **CustomerForm**: Collects user preferences (interests, budget, dates, party size)
+4. **LoadingState**: Displays loading spinner with status text during API call
+5. **ItineraryView**: Renders successful response with destination cards
+6. **DestinationCard**: Shows POIs, events, and weather for each destination
+7. **ErrorState**: Displays error message with retry button
+8. **itineraryApi.ts**: Type-safe API client using fetch (POST to `/api/itinerary`)
+
+**State Machine Flow:**
+- **idle**: Initial state; shows CustomerForm
+- **loading**: API call in progress; shows LoadingState
+- **success**: Data received; shows ItineraryView
+- **error**: Request failed; shows ErrorState with retry → back to idle
+
+**API Boundary:**
+- Frontend sends `CustomerProfile` JSON
+- Backend returns `ItineraryResponse` with destinations array
+- Error handling: 4xx/5xx responses trigger error state
+
+---
+
+## 3. Agent Orchestration Sequence
 
 Detailed sequence diagram showing the two-phase orchestration flow with timing.
 
@@ -131,7 +205,7 @@ sequenceDiagram
 
 ---
 
-## 3. Data Flow Pipeline
+## 4. Data Flow Pipeline
 
 How customer data transforms through the agent pipeline into a complete itinerary.
 
@@ -201,7 +275,7 @@ graph LR
 
 ---
 
-## 4. Pydantic Model Class Diagram
+## 5. Pydantic Model Class Diagram
 
 Data model relationships showing composition and aggregation patterns.
 
@@ -281,7 +355,7 @@ classDiagram
 
 ---
 
-## 5. API Request/Response Flow
+## 6. API Request/Response Flow
 
 HTTP layer showing endpoint routing, validation, and error handling.
 
@@ -324,7 +398,7 @@ graph TD
 
 ---
 
-## 6. Infrastructure Diagram
+## 7. Infrastructure Diagram
 
 Azure deployment architecture showing all managed services and container apps.
 
@@ -375,7 +449,7 @@ graph TB
 
 ---
 
-## 7. Error Handling Flow
+## 8. Error Handling Flow
 
 How the system handles failures at different layers of the agent pipeline.
 

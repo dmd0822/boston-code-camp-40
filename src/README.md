@@ -1,6 +1,6 @@
-# `src/` — Production Code
+# `src/` — Backend Production Code
 
-This folder contains all backend production code for the Travel Agent Application.
+This folder contains all backend production code for the Travel Agent Application. For the frontend (React + TypeScript), see [frontend/README.md](../frontend/README.md).
 
 ## Organization
 

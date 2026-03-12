@@ -49,4 +49,124 @@
 - Error handling diagram shows "partial success" philosophy (return 200 with warnings rather than 500)
 - Infrastructure diagram uses dashed arrows for deployment relationships vs solid for runtime calls
 
+**Key Insights:**
+- Used `par...and...end` in sequence diagram to visually represent concurrent specialist agent execution
+- Subgraphs in data flow show repeated pattern across multiple destinations
+- Error handling diagram shows "partial success" philosophy (return 200 with warnings rather than 500)
+- Infrastructure diagram uses dashed arrows for deployment relationships vs solid for runtime calls
+
 (Append new learnings below this line)
+
+### 2026-03-12 — Phase 4 Frontend Component Architecture Diagram
+
+**Status:** ✅ COMPLETE — Frontend component diagram added to docs/diagrams.md
+
+**Diagram Created: Frontend Component Architecture (Diagram #8)**
+
+**Pattern:** `graph TD` (top-down flowchart)
+
+**Purpose:** Visualize React component hierarchy, state management, and API integration flow
+
+**Component Tree Shown:**
+- **App Root** (entry point)
+  - **useItinerary Hook** (state machine: idle → loading → success/error)
+    - **CustomerForm** (user input collection)
+      - Interest input fields
+      - Budget selector
+      - Travel date picker
+      - Destination list selector
+      - Submit button
+    - **ItineraryView** (results display)
+      - **DestinationCard** (per destination)
+        - POI Card Collection
+        - Event Card Collection
+        - Weather Forecast Display
+      - **LoadingState** (modal overlay during fetch)
+        - Spinner animation
+        - Loading message
+      - **ErrorState** (modal overlay on failure)
+        - Error message display
+        - Retry button
+
+**Data Flow Shown:**
+- CustomerProfile (interests, budget, dates, destinations) → itineraryApi client
+- POST /api/itinerary → Response (ItineraryResponse with full details)
+- Response → State update in useItinerary hook
+- State flows down component tree: App → useItinerary → ItineraryView → DestinationCard
+
+**Color Coding:**
+- **Blue nodes:** React components (user-facing UI elements)
+- **Yellow nodes:** Custom hooks (state management)
+- **Purple nodes:** API client (fetch wrapper, error handling)
+- **Green edges:** Props/data flow (top-down)
+- **Red edges:** Event handlers (bottom-up callbacks)
+
+**TypeScript Types Highlighted:**
+- `CustomerProfile` input shape
+- `ItineraryResponse` output shape
+- `Destination`, `PointOfInterest`, `Event`, `WeatherForecast` nested types
+- State types: `idle | loading | success | error`
+
+**Integration Points:**
+- itineraryApi.ts: POST /api/itinerary (call to backend)
+- useItinerary hook: State machine managing async operations
+- CSS Modules: Travel-themed responsive styling
+- Error boundaries: Graceful failure handling (recommended for future)
+
+**Diagram #1 Updated: System Overview**
+
+**Changes Made:**
+- Added Frontend box (React 18 + Vite + TypeScript)
+- Updated browser connection: Browser → Frontend (React SPA)
+- Updated Frontend → Backend API (FastAPI + agents)
+- Clarified "Single-page application" vs "Microservices"
+- Added frontend technology stack labels
+
+**Color Consistency:**
+- Maintained existing color scheme (Blue user-facing, Yellow orchestration, Purple backend)
+- New Frontend box uses consistent styling with existing components
+
+**Maintenance Notes Added:**
+
+**File:** `docs/diagrams.md` section "Component Architecture Maintenance"
+
+- Version: When component hierarchy changes, regenerate diagram
+- How to Update: Edit mermaid graph in docs/diagrams.md, validate syntax
+- Color Convention: Component (Blue), Hook (Yellow), API (Purple)
+- Naming: Use actual file names (e.g., CustomerForm, not Form)
+- Testing: Run `npm run build` to verify no TypeScript errors
+- Cross-reference: Update if component APIs change (props, handlers)
+
+**Integration with Existing Diagrams:**
+
+1. System Overview — Shows frontend as user-facing layer
+2. Orchestration Sequence — Shows backend two-phase agent execution
+3. Data Flow — Shows POST /api/itinerary request/response
+4. Frontend Component Architecture — NEW: Details frontend internal structure
+5. API Flow — Shows FastAPI routes and error handling
+6. Class Diagram — Shows Pydantic models (source of TypeScript types)
+7. Infrastructure — Shows deployment targets for frontend (CDN, edge)
+8. Error Handling — Shows error recovery flows (frontend retry + backend partial success)
+
+**Documentation Cross-Links:**
+
+- Updated `docs/architecture.md` — Added "Frontend Component Architecture" to TOC and linked to diagram #8
+- Updated `README.md` — Added diagram #8 reference in Architecture Decisions section
+- Updated `frontend/README.md` — References diagram for component structure overview
+- All diagrams appear in comprehensive `docs/diagrams.md` (now 9 diagrams total)
+
+**Validation:**
+
+- ✅ Mermaid syntax validated (no syntax errors)
+- ✅ All component names match actual file names in `frontend/src/`
+- ✅ State flow matches useItinerary hook implementation
+- ✅ API endpoint matches backend OpenAPI spec
+- ✅ Cross-referenced from architecture and README
+
+**Notes for Phase 5+:**
+
+- **E2E Test Flow** — Add diagram showing Playwright/Cypress test architecture
+- **Deployment Architecture** — Frontend CDN, backend API, reverse proxy
+- **Error Handling Flow** — Comprehensive error recovery (network, validation, partial data)
+- **Performance Monitoring** — Telemetry, logging, error tracking architecture
+- **Feature Flags** — A/B testing, gradual rollout architecture

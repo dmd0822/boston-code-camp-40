@@ -6,7 +6,7 @@
 
 A FastAPI backend application that orchestrates four specialized AI agents (General, POI, Event, Weather) to create comprehensive travel itineraries. Each agent is grounded in Bing Web Search to ensure factual accuracy. The application is built with Microsoft Agent Framework and deployed on Azure Container Apps.
 
-**Phase 1 Status:** ✅ Backend & tests complete. APIs ready. Foundation ready for frontend and infrastructure deployment.
+**Status:** ✅ **Phase 4 Complete** — Full backend + frontend MVP ready. All 173 tests passing (107 backend + 66 frontend).
 
 ## Technology Stack
 
@@ -18,7 +18,7 @@ A FastAPI backend application that orchestrates four specialized AI agents (Gene
 | **HTTP API** | FastAPI + Uvicorn | Async REST backend |
 | **Config** | Pydantic Settings + `python-dotenv` | Environment-based config (no hard-coded secrets) |
 | **Testing** | pytest | Unit & integration tests |
-| **Frontend** | React + Vite + TypeScript | SPA consuming the `/api/itinerary` endpoint |
+| **Frontend** | React 18 + Vite + TypeScript | Complete SPA: CustomerForm, ItineraryView, components, hooks, API client (204 KB JS, 64 KB gzipped) |
 | **Infrastructure** | Azure Bicep | IaC for Container Apps, registries, OpenAI, and search APIs |
 | **Language** | Python 3.x | Backend runtime |
 
@@ -66,13 +66,14 @@ A FastAPI backend application that orchestrates four specialized AI agents (Gene
 
 ### Prerequisites
 
-- Python 3.10 or later
+- Python 3.10+ (backend)
+- Node.js 18+ and npm (frontend)
 - An Azure subscription (Azure OpenAI, Bing Web Search)
 - Git
 
 ### Quick Start
 
-#### 1. Clone and setup Python environment
+#### 1. Clone repository and setup backend
 
 ```bash
 git clone <repo-url>
@@ -108,15 +109,25 @@ BING_SEARCH_ENDPOINT=https://api.bing.microsoft.com/
 APP_VERSION=0.1.0
 ```
 
-#### 3. Run the server
+#### 3. Start the backend server
 
 ```bash
 python entrypoints/serve.py
 ```
 
-Server starts on `http://localhost:8000`
+Backend runs on `http://localhost:8000`
 
-#### 4. Test the API
+#### 4. Setup and run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173` (Vite proxy routes `/api/*` → backend)
+
+#### 5. Test the API
 
 ```bash
 # Health check
@@ -140,11 +151,24 @@ curl -X POST http://localhost:8000/api/itinerary \
 boston-code-camp-40/
 ├── README.md                  # This file
 ├── LICENSE                    # MIT License
-├── requirements.txt           # Python dependencies
+├── requirements.txt           # Python dependencies (backend)
 ├── Dockerfile                 # Container build for backend
 ├── .env.template              # Environment variables template
 │
-├── src/                       # Production code
+├── frontend/                  # React + TypeScript frontend (Phase 4)
+│   ├── src/
+│   │   ├── api/               # API client (itineraryApi.ts)
+│   │   ├── components/        # 5 React components (Form, View, Cards, Loading, Error)
+│   │   ├── hooks/             # useItinerary custom hook (state machine)
+│   │   ├── types/             # TypeScript type definitions (mirrored from backend)
+│   │   ├── App.tsx            # Main app component
+│   │   └── main.tsx           # Entry point
+│   ├── package.json           # npm dependencies & scripts
+│   ├── vite.config.ts         # Vite build config (includes /api proxy)
+│   ├── tsconfig.json          # TypeScript config
+│   └── README.md              # Frontend setup & architecture
+│
+├── src/                       # Production code (backend)
 │   ├── agents/                # AI agent implementations (4 agents: General, POI, Event, Weather)
 │   │   ├── general_agent.py   # Destination matching agent
 │   │   ├── poi_agent.py       # Points of interest agent
@@ -195,11 +219,12 @@ boston-code-camp-40/
 ```
 
 **Key folders documented separately:**
+- [frontend/README.md](frontend/README.md) — Frontend React setup, components, and architecture
 - [src/README.md](src/README.md) — Backend code organization
 - [src/agents/README.md](src/agents/README.md) — AI agents and tools
 - [src/pipelines/README.md](src/pipelines/README.md) — Reusable pipeline code (note: currently unused in MVP)
 - [entrypoints/README.md](entrypoints/README.md) — Entry points and server startup
-- [tests/README.md](tests/README.md) — Testing strategy and structure
+- [tests/README.md](tests/README.md) — Testing strategy and structure (backend + frontend)
 - [config/README.md](config/README.md) — Configuration management
 - [data/README.md](data/README.md) — Data staging and prompt artifacts
 - [data/prompts/README.md](data/prompts/README.md) — Agent system prompts
@@ -247,8 +272,10 @@ Liveness check.
 
 ## Running Tests
 
+### Backend Tests (107 passing)
+
 ```bash
-# Run all tests
+# Run all backend tests
 pytest
 
 # Run with coverage
@@ -261,7 +288,24 @@ pytest tests/unit/test_general_agent.py
 pytest -v
 ```
 
+### Frontend Tests (66 passing)
+
+```bash
+cd frontend
+
+# Run all frontend tests
+npm run test
+
+# Run with coverage
+npm run test -- --coverage
+
+# Watch mode
+npm run test -- --watch
+```
+
 See [tests/README.md](tests/README.md) for test structure and coverage details.
+
+**Total: 173 tests passing (107 backend + 66 frontend)**
 
 
 ## Development
