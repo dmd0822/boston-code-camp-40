@@ -88,7 +88,7 @@ class TestPOIAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_poi_agent_response)
+        mock_response.text = json.dumps(mock_poi_agent_response)
 
         with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
@@ -139,7 +139,7 @@ class TestPOIAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_poi_agent_response)
+        mock_response.text = json.dumps(mock_poi_agent_response)
 
         with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
@@ -188,7 +188,7 @@ class TestPOIAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps([])
+        mock_response.text = json.dumps([])
 
         with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:
@@ -236,7 +236,7 @@ class TestPOIAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_poi_agent_response)
+        mock_response.text = json.dumps(mock_poi_agent_response)
 
         with patch("src.agents.poi_agent.DefaultAzureCredential"), patch("src.agents.poi_agent.AzureAIClient"):
             with patch("src.agents.poi_agent.Agent") as MockAgent:

@@ -88,7 +88,7 @@ class TestEventAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_event_agent_response)
+        mock_response.text = json.dumps(mock_event_agent_response)
 
         with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
@@ -138,7 +138,7 @@ class TestEventAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps([])
+        mock_response.text = json.dumps([])
 
         with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
@@ -184,7 +184,7 @@ class TestEventAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_event_agent_response)
+        mock_response.text = json.dumps(mock_event_agent_response)
 
         with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
@@ -235,7 +235,7 @@ class TestEventAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_event_agent_response)
+        mock_response.text = json.dumps(mock_event_agent_response)
 
         with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:
@@ -288,7 +288,7 @@ class TestEventAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps([])
+        mock_response.text = json.dumps([])
 
         with patch("src.agents.event_agent.DefaultAzureCredential"), patch("src.agents.event_agent.AzureAIClient"):
             with patch("src.agents.event_agent.Agent") as MockAgent:

@@ -89,7 +89,7 @@ class TestWeatherAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_weather_agent_response)
+        mock_response.text = json.dumps(mock_weather_agent_response)
 
         with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
@@ -141,7 +141,7 @@ class TestWeatherAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_weather_agent_response)
+        mock_response.text = json.dumps(mock_weather_agent_response)
 
         with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
@@ -205,7 +205,7 @@ class TestWeatherAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_weather_agent_response)
+        mock_response.text = json.dumps(mock_weather_agent_response)
 
         with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
@@ -256,7 +256,7 @@ class TestWeatherAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = "null"
+        mock_response.text = "null"
 
         with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:
@@ -303,7 +303,7 @@ class TestWeatherAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_weather_agent_response)
+        mock_response.text = json.dumps(mock_weather_agent_response)
 
         with patch("src.agents.weather_agent.DefaultAzureCredential"), patch("src.agents.weather_agent.AzureAIClient"):
             with patch("src.agents.weather_agent.Agent") as MockAgent:

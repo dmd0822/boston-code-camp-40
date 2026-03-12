@@ -76,7 +76,7 @@ class TestGeneralAgent:
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_general_agent_response)
+        mock_response.text = json.dumps(mock_general_agent_response)
 
         with patch("src.agents.general_agent.DefaultAzureCredential"):
             with patch("src.agents.general_agent.AzureAIClient"):
@@ -121,7 +121,7 @@ class TestGeneralAgent:
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_general_agent_response)
+        mock_response.text = json.dumps(mock_general_agent_response)
 
         with patch(
             "src.agents.tools.web_search.search_web"
@@ -171,7 +171,7 @@ class TestGeneralAgent:
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_general_agent_response)
+        mock_response.text = json.dumps(mock_general_agent_response)
 
         with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:
@@ -225,7 +225,7 @@ class TestGeneralAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_general_agent_response)
+        mock_response.text = json.dumps(mock_general_agent_response)
 
         with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:
@@ -296,7 +296,7 @@ class TestGeneralAgent:
         )
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps(mock_general_agent_response)
+        mock_response.text = json.dumps(mock_general_agent_response)
 
         with patch("src.agents.general_agent.DefaultAzureCredential"), patch("src.agents.general_agent.AzureAIClient"):
             with patch("src.agents.general_agent.Agent") as MockAgent:

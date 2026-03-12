@@ -151,10 +151,10 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     import ``Settings`` themselves after env is prepared.
     """
     env_vars: Dict[str, str] = {
-        "AZURE_OPENAI_ENDPOINT": (
-            "https://test.openai.azure.com/"
+        "AZURE_AI_PROJECT_ENDPOINT": (
+            "https://test.services.ai.azure.com/api/projects/test"
         ),
-        "AZURE_OPENAI_DEPLOYMENT": "gpt-4o",
+        "AZURE_AI_MODEL_DEPLOYMENT_NAME": "gpt-4o",
     }
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)

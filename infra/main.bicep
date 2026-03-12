@@ -107,11 +107,11 @@ module backendApp 'modules/container-app.bicep' = {
     secrets: []
     env: [
       {
-        name: 'AZURE_OPENAI_ENDPOINT'
-        value: aiFoundry.outputs.endpoint
+        name: 'AZURE_AI_PROJECT_ENDPOINT'
+        value: aiFoundry.outputs.projectEndpoint
       }
       {
-        name: 'AZURE_OPENAI_DEPLOYMENT'
+        name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'
         value: aiFoundry.outputs.deploymentName
       }
     ]
@@ -179,6 +179,9 @@ output acrLoginServer string = acr.outputs.loginServer
 
 @description('The AI Foundry endpoint')
 output aiFoundryEndpoint string = aiFoundry.outputs.endpoint
+
+@description('The AI Foundry project endpoint')
+output aiFoundryProjectEndpoint string = aiFoundry.outputs.projectEndpoint
 
 @description('The name of the AI Foundry account')
 output aiFoundryName string = aiFoundry.outputs.name

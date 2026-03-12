@@ -82,6 +82,9 @@ output name string = aiFoundry.name
 @description('The endpoint URL for the AI Foundry account')
 output endpoint string = aiFoundry.properties.endpoint
 
+@description('The AI Foundry project endpoint URL')
+output projectEndpoint string = project.properties.endpoints['AI Foundry API']
+
 @description('The name of the model deployment')
 output deploymentName string = modelDeployment.name
 

@@ -27,9 +27,9 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
-    # Azure OpenAI (auth via DefaultAzureCredential — no API key)
-    AZURE_OPENAI_ENDPOINT: Optional[str] = None
-    AZURE_OPENAI_DEPLOYMENT: Optional[str] = None
+    # Azure AI Foundry (auth via DefaultAzureCredential — no API key)
+    AZURE_AI_PROJECT_ENDPOINT: Optional[str] = None
+    AZURE_AI_MODEL_DEPLOYMENT_NAME: Optional[str] = None
 
     # Application
     APP_VERSION: str = "0.1.0"

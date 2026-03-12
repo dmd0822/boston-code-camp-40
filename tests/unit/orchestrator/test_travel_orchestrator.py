@@ -38,8 +38,8 @@ from src.config.settings import Settings
 def orchestrator_settings() -> Settings:
     """Return a Settings instance for orchestrator tests."""
     return Settings(
-        AZURE_OPENAI_ENDPOINT="https://test.openai.azure.com/",
-        AZURE_OPENAI_DEPLOYMENT="gpt-4o",
+        AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+        AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
     )
 
 

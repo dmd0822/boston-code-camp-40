@@ -83,20 +83,20 @@ class TestMainBicep:
         assert "bing-search.bicep" not in main_bicep_content, \
             "main.bicep should not reference bing-search.bicep"
 
-    def test_passes_azure_openai_endpoint(self, main_bicep_content: str):
-        """Test that AZURE_OPENAI_ENDPOINT is passed to backend."""
-        assert re.search(r"name:\s*['\"]AZURE_OPENAI_ENDPOINT['\"]", main_bicep_content), \
-            "main.bicep should pass AZURE_OPENAI_ENDPOINT to backend"
+    def test_passes_azure_ai_project_endpoint(self, main_bicep_content: str):
+        """Test that AZURE_AI_PROJECT_ENDPOINT is passed to backend."""
+        assert re.search(r"name:\s*['\"]AZURE_AI_PROJECT_ENDPOINT['\"]", main_bicep_content), \
+            "main.bicep should pass AZURE_AI_PROJECT_ENDPOINT to backend"
 
     def test_no_api_key_env_var(self, main_bicep_content: str):
         """Test that AZURE_OPENAI_API_KEY is not passed (managed identity)."""
         assert "AZURE_OPENAI_API_KEY" not in main_bicep_content, \
             "main.bicep should not pass AZURE_OPENAI_API_KEY (uses managed identity)"
 
-    def test_passes_azure_openai_deployment(self, main_bicep_content: str):
-        """Test that AZURE_OPENAI_DEPLOYMENT is passed to backend."""
-        assert re.search(r"name:\s*['\"]AZURE_OPENAI_DEPLOYMENT['\"]", main_bicep_content), \
-            "main.bicep should pass AZURE_OPENAI_DEPLOYMENT to backend"
+    def test_passes_azure_ai_model_deployment(self, main_bicep_content: str):
+        """Test that AZURE_AI_MODEL_DEPLOYMENT_NAME is passed to backend."""
+        assert re.search(r"name:\s*['\"]AZURE_AI_MODEL_DEPLOYMENT_NAME['\"]", main_bicep_content), \
+            "main.bicep should pass AZURE_AI_MODEL_DEPLOYMENT_NAME to backend"
 
     def test_no_bing_search_env_vars(self, main_bicep_content: str):
         """Test that Bing Search env vars are not in main.bicep."""

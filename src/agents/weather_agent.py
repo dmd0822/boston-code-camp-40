@@ -56,22 +56,22 @@ def create_weather_agent(settings: Settings) -> Agent:
     """
     if not all(
         [
-            settings.AZURE_OPENAI_ENDPOINT,
-            settings.AZURE_OPENAI_DEPLOYMENT,
+            settings.AZURE_AI_PROJECT_ENDPOINT,
+            settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
         ]
     ):
         raise ValueError(
-            "Azure OpenAI not configured. Set "
-            "AZURE_OPENAI_ENDPOINT and "
-            "AZURE_OPENAI_DEPLOYMENT."
+            "Azure AI Foundry not configured. Set "
+            "AZURE_AI_PROJECT_ENDPOINT and "
+            "AZURE_AI_MODEL_DEPLOYMENT_NAME."
         )
 
     credential = DefaultAzureCredential()
 
     client = AzureAIClient(
-        endpoint=settings.AZURE_OPENAI_ENDPOINT,
+        project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
         credential=credential,
-        deployment=settings.AZURE_OPENAI_DEPLOYMENT,
+        model_deployment_name=settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
     )
 
     instructions = _load_system_prompt()
@@ -140,7 +140,7 @@ async def get_weather_forecast(
         response = await agent.run(user_prompt)
 
         # Parse response
-        response_text = response.content.strip()
+        response_text = response.text.strip()
 
         # Try to extract JSON from markdown code blocks
         if "```json" in response_text:
