@@ -47,7 +47,7 @@ module acr 'modules/acr.bicep' = {
 // Role: AcrPull for the managed identity on ACR
 // ========================================
 resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.outputs.id, acrPullIdentity.id, acrPullRoleId)
+  name: guid(acrResource.id, acrPullIdentity.id, acrPullRoleId)
   scope: acrResource
   properties: {
     roleDefinitionId: acrPullRoleId
@@ -131,7 +131,7 @@ module backendApp 'modules/container-app.bicep' = {
 // Role: Cognitive Services OpenAI User for backend on AI Foundry
 // ========================================
 resource backendAIRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(aiFoundry.outputs.id, backendApp.outputs.id, cognitiveServicesOpenAIUserRoleId)
+  name: guid(aiFoundryResource.id, backendApp.name, cognitiveServicesOpenAIUserRoleId)
   scope: aiFoundryResource
   properties: {
     roleDefinitionId: cognitiveServicesOpenAIUserRoleId
