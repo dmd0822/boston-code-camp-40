@@ -26,7 +26,7 @@ param capacity int = 10
 param projectName string
 
 // AI Foundry account (CognitiveServices kind='AIServices')
-resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: name
   location: location
   tags: tags
@@ -46,7 +46,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
 }
 
 // Project as a child resource of the Foundry account
-resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   name: projectName
   parent: aiFoundry
   location: location
@@ -57,7 +57,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 }
 
 // Model deployment as a child resource of the Foundry account
-resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   parent: aiFoundry
   name: deploymentName
   sku: {
