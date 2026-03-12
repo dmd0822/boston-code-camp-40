@@ -10,7 +10,104 @@
 
 ## Learnings
 
-<!-- Append new learnings below. Each entry is something lasting about the project. -->
+### 2026-03-12 — All README Files Updated Post-Phase 1
+
+Updated all 16 README.md files across the repository to reflect the Travel Agent Application (post-MVP phase 1):
+
+**Root README.md** — Rewritten as the main project entry point
+- Travel Agent Application description + tech stack table
+- System architecture diagram
+- Quick start guide (setup, env vars, running server, test API endpoints)
+- Project structure with 9 key folders explained
+- API endpoint documentation
+- Running tests section
+- Development guidelines and code style
+
+**src/README.md** — Refactored for backend organization
+- Agents, API, orchestrator, config modules described
+- Two-phase orchestration pattern explained
+- Key conventions and development guidelines
+
+**src/agents/README.md** — Complete rewrite on AI agent design
+- Four agents described (General, POI, Event, Weather)
+- Agent design principles (explicit boundaries, mandatory grounding)
+- Web search tool shared across agents
+- Two-phase orchestration flow (Sequential → Concurrent fan-out → Aggregation)
+- System prompt conventions
+- Adding new agents pattern
+
+**src/pipelines/README.md** — Marked as "unused in MVP, preserved for future"
+- Placeholder for future feature engineering pipelines
+- Design principles when needed
+- Suggested layout for future use
+
+**entrypoints/README.md** — serve.py focused
+- FastAPI server startup entry point
+- Configuration loading and environment variables
+- Thin wrapper pattern (no business logic)
+- Docker reference
+
+**tests/README.md** — Complete test strategy documented
+- Folder structure (unit/, integration/, fixtures/)
+- Running tests (all, coverage, specific file, verbose, by type)
+- Test coverage status for Phase 1
+- What to test (API contracts, orchestration, agents, config, edge cases)
+- Fixtures and test organization patterns
+- Example unit and integration tests
+- CI/CD integration reference
+
+**config/README.md** — Environment-based configuration
+- Pydantic Settings pattern
+- Required environment variables table (Azure OpenAI, Bing Search, app version)
+- .env.template vs .env separation
+- Local development setup
+- Production deployment notes
+- Secret management (never commit .env)
+
+**data/README.md** — Staged data layout + agent prompts
+- ML data pipeline folders (01-raw through 04-predictions) marked as "unused in MVP"
+- Agent prompts in data/prompts/ as version-controlled artifacts
+- Prompt loading at agent initialization
+- Distinction from .github/prompts/
+
+**data/prompts/README.md** — Agent prompt artifact standards
+- Organization by agent name (general/, poi/, event/, weather/)
+- Markdown conventions
+- Typical system prompt structure example
+- Loading prompts in code pattern
+- Mandatory grounding emphasis
+- Difference between prompts (artifacts) and code
+
+**infra/README.md** — Azure Bicep Infrastructure (Phase 5 planned)
+- Status: Phase 5 planned, skeleton structure
+- Planned Azure services (Container Apps, Container Registry, OpenAI, Bing Search)
+- Deployment workflow sketch
+- Modular Bicep conventions (one file per resource)
+- Security guidelines (Key Vault for secrets)
+
+**Other READMEs maintained** (no changes needed):
+- data/01-raw/, data/02-preprocessed/, data/03-features/, data/04-predictions/ — Generic ML pipeline stages
+- notebooks/README.md — Exploration and EDA guidelines
+- reports/README.md — Experiment summary report standards
+
+**Files modified:**
+- C:\repos\boston-code-camp-40\README.md ✅
+- C:\repos\boston-code-camp-40\src\README.md ✅
+- C:\repos\boston-code-camp-40\src\agents\README.md ✅
+- C:\repos\boston-code-camp-40\src\pipelines\README.md ✅
+- C:\repos\boston-code-camp-40\entrypoints\README.md ✅
+- C:\repos\boston-code-camp-40\tests\README.md ✅
+- C:\repos\boston-code-camp-40\config\README.md ✅
+- C:\repos\boston-code-camp-40\data\README.md ✅
+- C:\repos\boston-code-camp-40\data\prompts\README.md ✅
+- C:\repos\boston-code-camp-40\infra\README.md ✅
+
+**Patterns noted:**
+- All READMEs cross-reference architecture.md as single source of truth
+- Consistent "See Also" sections linking related folders
+- Practical examples for developers (curl commands, pytest patterns, config templates)
+- Clear distinction between MVP (current) and future phases
+- Markdown code blocks use ``` for formatting consistency
 
 ### 2026-03-12 — Architecture Design Complete
 

@@ -1,50 +1,71 @@
-# `src/pipelines/`
+# src/pipelines/ — Reusable Pipeline Code
 
-This folder contains reusable, testable pipeline code.
+This folder contains reusable, testable pipeline code for feature engineering, training, and inference.
 
-Treat feature engineering, training, inference, and evaluation as pipelines rather than one-off scripts. This makes your work easier to:
+## Status in MVP
 
-- Reuse
-- Test
-- Automate
-- Productionize
+**Currently unused.** This folder is preserved from the ML template but not part of the Travel Agent MVP.
 
-## What belongs here
+It remains available for future phases when:
+- Feature engineering is needed for customer profile enrichment
+- Batch prediction workflows are required
+- Historical data analysis is performed
 
-- Feature engineering and transformation logic
-- Training routines (model fitting, validation, model selection)
-- Inference routines (batch/online prediction logic)
-- Evaluation and metric computation
-- Shared utilities used by multiple pipelines
+## Design Principles
 
-## Suggested layout (example)
+When pipelines are added, follow these principles:
 
-```text
-src/
-  pipelines/
-    features/
-    train/
-    infer/
-    evaluate/
-    common/
+- **Modularity:** One pipeline per file (e.g., eature_pipeline.py, inference_pipeline.py)
+- **Testability:** Pure functions where possible; I/O at the edges
+- **Determinism:** Same inputs + config = same outputs
+- **Configuration:** Take parameters from src/config/, not hard-coded values
+- **Reusability:** Write functions, not scripts
+
+## Suggested Layout (Future)
+
+If this folder is populated, organize it like:
+
+```
+src/pipelines/
+├── feature/
+│   └── customer_enrichment.py    # Enrich customer profiles with external data
+├── train/
+│   └── model_pipeline.py         # Train preference models (future)
+├── infer/
+│   └── predict_preferences.py    # Predict customer preferences (future)
+└── common/
+    └── validators.py            # Shared validation utilities
 ```
 
-## Design principles (recommended)
+## Relationship to Other Components
 
-- Prefer small, pure functions where possible.
-- Keep I/O at the edges: read inputs, call pipeline logic, write outputs.
-- Make pipeline steps deterministic given config + input data.
-- Avoid hard-coded paths; take inputs/outputs from config or parameters.
+- **Agents:** src/agents/ orchestrates work; pipelines do data processing
+- **Entry points:** ntrypoints/ calls pipeline functions
+- **Tests:** 	ests/pipelines/ covers pipeline logic
+- **Configuration:** Pipelines accept config from src/config/settings.py
 
-## Relationship to `entrypoints/`
+## Example (For Future Reference)
 
-Entry points should be thin wrappers that call the functions defined here.
+When features are added, pipelines might look like:
 
-If your project includes agentic development workflows, keep orchestration logic in [`src/agents/`](../agents/) and store prompt artifacts in [`data/prompts/`](../../data/prompts/).
+```python
+def enrich_customer_profile(profile: CustomerProfile, config: Settings) -> EnrichedProfile:
+    \"\"\"Enrich a customer profile with external data.\"\"\"
+    # Fetch additional data from APIs
+    # Validate inputs
+    # Return enriched profile
+    return enriched
+```
 
 ## How This Fits
 
-- Implemented and tested here, executed via [`entrypoints/`](../../entrypoints/)
-- Typically configured via [`config/`](../../config/)
-- Consumes/produces artifacts in staged folders under [`data/`](../../data/)
-- Supported by automated checks in [`tests/`](../../tests/)
+- Called by agents and entry points
+- Uses configuration from src/config/
+- Produces outputs written to data/ or databases
+- Tested via 	ests/
+
+## See Also
+
+- [../README.md](../README.md) — src/ overview
+- [../../entrypoints/README.md](../../entrypoints/README.md) — Entry points
+- [../../tests/README.md](../../tests/README.md) — Testing strategy

@@ -1,221 +1,294 @@
-# ML Project Structure (Template)
+# Travel Agent Application
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Project Name and Description
+> **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
-This repository is a lightweight, opinionated template for starting new machine learning projects.
+A FastAPI backend application that orchestrates four specialized AI agents (General, POI, Event, Weather) to create comprehensive travel itineraries. Each agent is grounded in Bing Web Search to ensure factual accuracy. The application is built with Microsoft Agent Framework and deployed on Azure Container Apps.
 
-It emphasizes:
-
-- A **staged data layout** (raw → preprocessed → features → predictions)
-- **Pipelines as code** (feature engineering, training, inference) instead of ad-hoc scripts
-- **Explicit entry points** for training and inference (useful for CI, Docker, and scheduled runs)
-- **Config separated** from code to support local vs production behaviors
-- **Tests from day one** to keep refactors safe
-- **Infrastructure as Code** support via `infra/` for reproducible environments
-- **Agentic development support**: agent code lives in `src/`, and agent prompt artifacts live in `data/`
+**Phase 1 Status:** ✅ Backend & tests complete. APIs ready. Foundation ready for frontend and infrastructure deployment.
 
 ## Technology Stack
 
-This template is intentionally minimal; you choose the libraries that fit your problem.
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **AI Agents** | Microsoft Agent Framework (`agent-framework`) | Define agents, tools, and reasoning |
+| **LLM** | Azure OpenAI (GPT-4o) | Reasoning engine for agents |
+| **Web Grounding** | Bing Web Search API | Mandatory search-first pattern for all agents |
+| **HTTP API** | FastAPI + Uvicorn | Async REST backend |
+| **Config** | Pydantic Settings + `python-dotenv` | Environment-based config (no hard-coded secrets) |
+| **Testing** | pytest | Unit & integration tests |
+| **Frontend** | React + Vite + TypeScript | SPA consuming the `/api/itinerary` endpoint |
+| **Infrastructure** | Azure Bicep | IaC for Container Apps, registries, OpenAI, and search APIs |
+| **Language** | Python 3.x | Backend runtime |
 
-- **Language:** Python (recommended)
-- **Environment management:** `venv` (recommended)
-- **Dependencies:** `pip` via `requirements.txt` (starter set included)
-- **Notebooks (optional):** `jupyter`, stored in `notebooks/`
-- **Containerization (optional):** Docker (a `Dockerfile` is present but currently empty)
-- **Testing (recommended):** `pytest`
+## System Architecture
 
-## Project Architecture
-
-At a high level, the project is organized around a simple ML lifecycle:
-
-```mermaid
-flowchart LR
-  A[data/01-raw] --> B[data/02-preprocessed]
-  B --> C[data/03-features]
-  C --> D[src/pipelines]
-  P[data/prompts] -. prompt artifacts .-> L[src/agents]
-  D --> E[data/04-predictions]
-  D --> K[reports]
-  D --> F[entry points]
-  G[config] --> D
-  L[src/agents] --> D
-  H[tests] --> D
-  I[notebooks] -. EDA & prototyping .-> D
-  J[infra] -. provisions runtime .-> F
+```
+┌────────────────────────────────────────┐
+│      React Frontend (Vite + TS)        │
+│  User form → customer profile submit   │
+└──────────────────┬─────────────────────┘
+                   │ HTTPS POST
+                   ▼
+┌────────────────────────────────────────┐
+│    FastAPI Backend (Python)            │
+│                                        │
+│  POST /api/itinerary                   │
+│  ├─ Orchestrator Service               │
+│  │  ├─ Phase 1: General Agent          │
+│  │  │  (destination matching)          │
+│  │  └─ Phase 2: Concurrent fan-out     │
+│  │     ├─ POI Agent                    │
+│  │     ├─ Event Agent                  │
+│  │     └─ Weather Agent                │
+│  └─ Return aggregated itinerary        │
+│                                        │
+│  GET /api/health                       │
+│  └─ Liveness check                     │
+└──────────────────┬─────────────────────┘
+                   │
+      ┌────────────┴────────────┐
+      ▼                         ▼
+┌──────────────────┐  ┌──────────────────┐
+│ Azure OpenAI     │  │ Bing Web Search  │
+│ (GPT-4o)         │  │ (grounding tool) │
+└──────────────────┘  └──────────────────┘
 ```
 
-- **Data is tracked by stage** in `data/`.
-- **Reusable, testable pipeline code** lives in `src/pipelines/`.
-- **Agentic development code** lives in `src/agents/`.
-- **Agent prompt artifacts** live in `data/prompts/`.
-- **Runnable scripts** (training/inference) live in `entrypoints/`.
-- **Configuration** lives in `config/` (e.g., local vs prod).
-- **Notebooks** are for exploration and experimentation, not production code.
-- **Infrastructure as Code** lives in `infra/`.
-
-Note: `.github/prompts/` is reserved for reusable GitHub Copilot prompt templates and should not be used as the runtime prompt store for agents.
+**Key Principles:**
+- **Explicit boundaries:** Each agent has defined inputs/outputs and a system prompt.
+- **Grounding mandatory:** All agents search first, then reason over results (no hallucination).
+- **Orchestration as code:** Deterministic Python flow, not LLM-driven routing.
+- **Async-native:** FastAPI handles concurrent agent calls efficiently.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.x installed
-- (Optional) Docker installed
+- Python 3.10 or later
+- An Azure subscription (Azure OpenAI, Bing Web Search)
+- Git
 
-## Python Environment Setup
+### Quick Start
 
-This template assumes an isolated Python environment per project.
-
-1. Create a virtual environment:
+#### 1. Clone and setup Python environment
 
 ```bash
+git clone <repo-url>
+cd boston-code-camp-40
+
+# Create virtual environment
 python -m venv .venv
-```
 
-1. Activate it:
-
-```bash
-# Windows PowerShell
+# Activate it
+# Windows:
 .\.venv\Scripts\Activate.ps1
-
-# macOS/Linux
+# macOS/Linux:
 source .venv/bin/activate
-```
 
-1. Install dependencies:
-
-```bash
-python -m pip install --upgrade pip
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-1. (Optional) Register an IPython kernel for this env:
+#### 2. Configure environment
 
 ```bash
-python -m ipykernel install --user --name ml-project-structure --display-name "Python (ml-project-structure)"
+# Copy template and fill in your Azure credentials
+cp .env.template .env
 ```
 
-### Setup
+Edit `.env` with:
+```
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-key
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+BING_SEARCH_API_KEY=your-bing-key
+BING_SEARCH_ENDPOINT=https://api.bing.microsoft.com/
+APP_VERSION=0.1.0
+```
 
-1. Set up your environment using the steps in the [Python Environment Setup](#python-environment-setup) section.
+#### 3. Run the server
 
-1. Start implementing your project:
+```bash
+python entrypoints/serve.py
+```
 
-- Add your training and inference scripts under `entrypoints/`.
-- Add pipeline logic under `src/pipelines/`.
-- Add tests under `tests/`.
+Server starts on `http://localhost:8000`
+
+#### 4. Test the API
+
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Build an itinerary (example)
+curl -X POST http://localhost:8000/api/itinerary \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alice",
+    "interests": ["hiking", "museums"],
+    "budget": "moderate",
+    "trip_duration": 7,
+    "travel_style": "adventurous"
+  }'
+```
 
 ## Project Structure
 
-High-level layout:
-
-```text
-Dockerfile               # (Optional) Container build recipe (currently empty)
-LICENSE                  # Project license
-README.md                # This documentation
-requirements.txt         # Python dependencies
-config/                 # Configuration (e.g., local vs prod settings)
-data/
-  01-raw/               # Immutable raw inputs
-  02-preprocessed/      # Cleaned/standardized datasets
-  03-features/          # Feature matrices / engineered feature sets
-  04-predictions/       # Model outputs / predictions
-  prompts/              # Agent prompt artifacts (version-controlled)
-entrypoints/            # Executable scripts (training, inference, batch jobs)
-infra/                  # Infrastructure as Code (provisioning/deploy)
-notebooks/              # EDA and experiments (kept separate from prod code)
-reports/                # Generated reports (figures, summaries, artifacts)
-src/
-  agents/               # Agentic development/orchestration code
-  pipelines/            # Reusable ML pipelines (feature, train, infer)
-tests/                  # Unit/integration tests
+```
+boston-code-camp-40/
+├── README.md                  # This file
+├── LICENSE                    # MIT License
+├── requirements.txt           # Python dependencies
+├── Dockerfile                 # Container build for backend
+├── .env.template              # Environment variables template
+│
+├── src/                       # Production code
+│   ├── agents/                # AI agent implementations (4 agents: General, POI, Event, Weather)
+│   │   ├── general_agent.py   # Destination matching agent
+│   │   ├── poi_agent.py       # Points of interest agent
+│   │   ├── event_agent.py     # Events/festivals agent
+│   │   ├── weather_agent.py   # Historical weather agent
+│   │   └── tools/             # Shared tools (e.g., web_search.py)
+│   ├── api/                   # FastAPI application
+│   │   ├── app.py             # App factory
+│   │   ├── routes/            # API endpoints (/itinerary, /health)
+│   │   └── models/            # Pydantic schemas (CustomerProfile, Itinerary)
+│   ├── orchestrator/          # Orchestration logic (two-phase flow)
+│   │   └── travel_orchestrator.py
+│   ├── config/                # App configuration (Pydantic Settings)
+│   │   └── settings.py
+│   └── README.md              # src/ documentation
+│
+├── entrypoints/               # Runnable scripts
+│   ├── serve.py               # Start the FastAPI server on port 8000
+│   └── README.md
+│
+├── tests/                     # Automated tests (pytest)
+│   ├── unit/                  # Unit tests for agents, API models
+│   ├── integration/           # Integration tests for orchestrator
+│   ├── fixtures/              # Test fixtures and mock data
+│   ├── conftest.py            # Pytest configuration
+│   └── README.md
+│
+├── config/                    # Configuration files
+│   └── README.md
+│
+├── data/                      # Data & artifacts
+│   ├── prompts/               # Agent system prompts (Markdown)
+│   │   ├── general/system.md
+│   │   ├── poi/system.md
+│   │   ├── event/system.md
+│   │   └── weather/system.md
+│   ├── 01-raw/                # Raw input data (unused in MVP)
+│   ├── 02-preprocessed/       # Preprocessed data (unused in MVP)
+│   ├── 03-features/           # Feature data (unused in MVP)
+│   └── 04-predictions/        # Predictions (unused in MVP)
+│
+├── infra/                     # Infrastructure as Code (Bicep)
+│   ├── main.bicep             # Main deployment template
+│   └── modules/               # Modular Bicep templates (Container Apps, registries, etc.)
+│
+├── notebooks/                 # EDA & exploration (not production code)
+└── reports/                   # Generated reports and outputs
 ```
 
-See the folder-level docs for details:
+**Key folders documented separately:**
+- [src/README.md](src/README.md) — Backend code organization
+- [src/agents/README.md](src/agents/README.md) — AI agents and tools
+- [src/pipelines/README.md](src/pipelines/README.md) — Reusable pipeline code (note: currently unused in MVP)
+- [entrypoints/README.md](entrypoints/README.md) — Entry points and server startup
+- [tests/README.md](tests/README.md) — Testing strategy and structure
+- [config/README.md](config/README.md) — Configuration management
+- [data/README.md](data/README.md) — Data staging and prompt artifacts
+- [data/prompts/README.md](data/prompts/README.md) — Agent system prompts
+- [infra/README.md](infra/README.md) — Infrastructure templates (Bicep)
 
-- [config/README.md](config/README.md)
-- [data/01-raw/README.md](data/01-raw/README.md)
-- [data/02-preprocessed/README.md](data/02-preprocessed/README.md)
-- [data/03-features/README.md](data/03-features/README.md)
-- [data/04-predictions/README.md](data/04-predictions/README.md)
-- [data/README.md](data/README.md)
-- [data/prompts/README.md](data/prompts/README.md)
-- [entry points/README.md](entrypoints/README.md)
-- [infra/README.md](infra/README.md)
-- [notebooks/README.md](notebooks/README.md)
-- [reports/README.md](reports/README.md)
-- [src/README.md](src/README.md)
-- [agents/README.md](src/agents/README.md)
-- [pipelines/README.md](src/pipelines/README.md)
-- [tests/README.md](tests/README.md)
+## API Endpoints
 
-## Key Features
+### `POST /api/itinerary`
 
-- Clear staged `data/` pipeline (raw → preprocessed → features → predictions)
-- Pipelines as reusable code (`src/pipelines/`) instead of one-off scripts
-- Explicit operational entry points (`entrypoints/`) to simplify automation
-- Infrastructure as Code support (`infra/`) for reproducible environments
-- Separate configuration directory (`config/`) to avoid hard-coding behavior
-- Tests included from the start (`tests/`)
-- Notebooks separated from production code (`notebooks/`)
+Build a personalized travel itinerary.
 
-## Development Workflow
+**Request:**
+```json
+{
+  "name": "Alice",
+  "interests": ["hiking", "museums", "local cuisine"],
+  "budget": "moderate",
+  "trip_duration": 7,
+  "travel_style": "adventurous"
+}
+```
 
-No single workflow is enforced, but the structure is designed to support a pragmatic ML loop:
+**Response:**
+```json
+{
+  "itinerary_id": "uuid",
+  "destinations": [
+    {
+      "destination": "Banff, Canada",
+      "description": "...",
+      "source_url": "...",
+      "pois": [...],
+      "events": [...],
+      "weather_forecast": {...}
+    }
+  ]
+}
+```
 
-1. Explore and validate assumptions in `notebooks/`.
-2. Turn stable logic into pipelines in `src/pipelines/`.
-3. Create runnable scripts in `entrypoints/` for training/inference.
-4. Add/expand tests in `tests/` as pipelines stabilize.
-5. (Optional) Containerize entry points for reproducible runs.
-6. (Optional) Provision/deploy runtime resources via `infra/`.
+### `GET /api/health`
 
-Branching strategy is not prescribed by this template; a common default is feature branches with pull requests into `main`.
+Liveness check.
 
-## Coding Standards
+**Response:** `{"status": "ok"}`
 
-Python code should follow:
-
-- PEP 8 formatting
-- Type hints where practical (`typing` module)
-- PEP 257 docstrings for public functions/classes
-- Small, composable functions with clear names
-- Tests for critical paths and edge cases
-
-If you want to enforce these standards automatically, consider adding tools like `ruff`/`black`/`mypy` and a CI workflow.
-
-## Testing
-
-This template includes a `tests/` directory so you can start testing early.
-
-Recommended approach:
-
-- Use `pytest` for unit tests
-- Keep pipelines modular so they’re easy to test
-- Cover edge cases (empty inputs, invalid schemas/types, large datasets)
-
-Example (once you add `pytest`):
+## Running Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_general_agent.py
+
+# Run with verbose output
+pytest -v
 ```
 
-## Contributing
+See [tests/README.md](tests/README.md) for test structure and coverage details.
 
-This repo is intended as a starting point. If you extend this template:
 
-- Keep the folder responsibilities consistent (pipelines vs entry points vs notebooks)
-- Update the relevant folder `README.md` when you add conventions
-- Prefer small, testable pipeline functions
-- Follow the Python coding standards described above
+## Development
 
-If you add agentic development capabilities, also follow:
+### Code Style
 
-- [`Agent.md`](Agent.md) (coding-agent operating rules)
-- [`Claud.md`](Claud.md) (LLM/repo onboarding + conventions)
+Python code follows:
+- PEP 8 formatting
+- Type hints via 	yping module
+- PEP 257 docstrings for public functions/classes
+- Clear, composable functions with intent-driven names
+
+### Architecture Decisions
+
+All significant architectural decisions are documented in:
+- **[docs/architecture.md](docs/architecture.md)** — Single source of truth for system design
+- **[.squad/decisions.md](.squad/decisions.md)** — Team decisions and approvals
+
+**For developers:** Read docs/architecture.md before making changes that affect agent flow, API contracts, or deployment patterns.
+
+### Contributing
+
+1. Create a feature branch: git checkout -b feature/your-feature
+2. Make changes and add tests
+3. Run tests locally: pytest
+4. Push and open a pull request
+5. All PRs must pass CI and code review
 
 ## License
 

@@ -1,47 +1,102 @@
-# `src/agents/`
+# src/agents/ — AI Agents
 
-This folder contains **agentic development code**.
+This folder contains the four specialized AI agents that power the Travel Agent Application:
 
-In this template, “agent code” means code that:
+1. **General Agent** — Destination matching / selection
+2. **POI Agent** — Points of Interest discovery
+3. **Event Agent** — Events, festivals, and cultural attractions
+4. **Weather Agent** — Historical weather forecasting
 
-- Plans work (task decomposition, tool selection, orchestration)
-- Loads and applies prompt artifacts (stored under `data/prompts/`)
-- Calls into pipeline code (`src/pipelines/`) to do domain work
-- Produces outputs (files, reports, predictions) using the same conventions as the rest of the repo
+## Agent Design Principles
 
-## What belongs here
+- **Explicit boundaries:** Each agent has a defined role, inputs, and outputs
+- **Grounding mandatory:** All agents use Bing Web Search as a tool (search-first pattern)
+- **System prompts:** Each agent loads its system prompt from data/prompts/{agent-name}/system.md
+- **Orchestration:** Agents are called by src/orchestrator/travel_orchestrator.py following a two-phase pattern
 
-- Agent orchestration and routing logic
-- Prompt loading and rendering utilities
-- Tool wrappers and adapters (e.g., file ops, evaluation helpers)
-- Agent-specific domain logic that is **not** part of a reusable ML pipeline
+## Folder Structure
 
-## What should NOT live here
-
-- ML feature engineering, training, inference, or evaluation pipeline logic (put that in `src/pipelines/`)
-- Runnable “main scripts” that are executed directly (put those in `entrypoints/`)
-- Prompt text / system instructions (store those in `data/prompts/`)
-
-## Relationship to `data/prompts/`
-
-Agent prompts are treated as **version-controlled artifacts**.
-
-- Prompts live in `data/prompts/`.
-- Agent code in `src/agents/` loads prompts by path and applies them at runtime.
-
-## Suggested layout (example)
-
-```text
-src/
-  agents/
-    common/
-    dev_agent/
-    research_agent/
+```
+src/agents/
+├── general_agent.py         # Destination matching agent
+├── poi_agent.py             # POI discovery agent
+├── event_agent.py           # Event discovery agent
+├── weather_agent.py         # Weather forecast agent
+└── tools/
+    ├── web_search.py        # Bing Web Search tool (shared by all agents)
+    └── __init__.py
 ```
 
-## How This Fits
+## Web Search Tool
 
-- Agent logic: `src/agents/`
-- Prompt artifacts: `data/prompts/`
-- Domain pipelines: `src/pipelines/`
-- Execution wrappers: `entrypoints/`
+**File:** src/agents/tools/web_search.py
+
+All agents use a shared search_web tool that:
+- Calls Bing Web Search API (via BING_SEARCH_API_KEY)
+- Returns search results with URLs (grounding for all reasoning)
+- Is configured in each agent's system prompt as an available tool
+
+This ensures **mandatory grounding**: agents search first, reason over results, never fabricate facts.
+
+## Orchestration Flow
+
+**Two-Phase Pattern:**
+
+```
+Phase 1 (Sequential):
+  CustomerProfile → General Agent → destinations: List[Destination]
+
+Phase 2 (Concurrent Fan-Out):
+  For each destination:
+    ├─ POI Agent      → list of points of interest
+    ├─ Event Agent    → list of events
+    └─ Weather Agent  → weather forecast
+
+Phase 3 (Fan-In / Aggregation):
+  Combine all results → Itinerary response
+```
+
+Implemented in: src/orchestrator/travel_orchestrator.py
+
+## System Prompts
+
+Each agent's system prompt is stored as Markdown in data/prompts/:
+
+```
+data/prompts/
+├── general/
+│   └── system.md          # "You are a destination-matching agent..."
+├── poi/
+│   └── system.md          # "You are a POI discovery agent..."
+├── event/
+│   └── system.md          # "You are an event discovery agent..."
+└── weather/
+    └── system.md          # "You are a weather forecast agent..."
+```
+
+Agents load prompts by path at initialization.
+
+## Key Conventions
+
+- **Naming:** Agent modules are snake_case (e.g., general_agent.py, not GeneralAgent.py)
+- **Tool definitions:** All shared tools live in 	ools/ and are imported by agents
+- **Configuration:** Agent endpoints, API keys, and LLM models come from src/config/settings.py
+- **Testing:** Unit tests for agents live in 	ests/unit/; integration tests in 	ests/integration/
+
+## Adding a New Agent
+
+If you add a new agent, follow this pattern:
+
+1. Create {agent_name}_agent.py in src/agents/
+2. Define the agent class (inherits from Microsoft Agent Framework Agent)
+3. Add system prompt to data/prompts/{agent_name}/system.md
+4. Register the agent in the orchestrator (src/orchestrator/travel_orchestrator.py)
+5. Add unit tests in 	ests/unit/agents/
+6. Add integration tests in 	ests/integration/
+
+## See Also
+
+- [docs/architecture.md](../../docs/architecture.md) — Agent design and orchestration
+- [../README.md](../README.md) — src/ overview
+- [../../data/prompts/README.md](../../data/prompts/README.md) — Prompt storage and conventions
+- [../../tests/README.md](../../tests/README.md) — Testing strategy

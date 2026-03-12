@@ -1,48 +1,82 @@
-# `infra/`
+# infra/ — Infrastructure as Code
 
-This folder is for infrastructure templates: everything needed to provision and configure the resources that run your ML workloads.
+This folder contains **Bicep templates** for deploying the Travel Agent Application to Azure.
 
-Terraform is a common default, but this template is tool-agnostic—use whatever fits your environment.
+## Status
 
-## What belongs here
+**Phase 5 (Infrastructure Deployment) — Planned**
 
-- Modules/templates
-- Environment definitions (dev/stage/prod)
-- Deployment configuration (variables, parameters, values files)
-- Documentation on how to provision, update, and destroy environments
+Currently a skeleton. Will contain:
+- Azure Container Apps for the FastAPI backend
+- Azure Container Registry for Docker images
+- Azure OpenAI service configuration
+- Bing Web Search API wiring
+- Network and security policies
 
-## What should NOT live here
+## Planned Structure
 
-- Secrets (keys/tokens/passwords). Use environment variables or a secrets manager.
-- Large artifacts or datasets (those belong under `data/`).
-- Generated state files committed to source control unless you intentionally manage state that way.
-
-## Suggested layout (example)
-
-```text
+```
 infra/
-  terraform/
-    modules/
-    envs/
-      dev/
-      prod/
-  docs/
+├── main.bicep              # Main deployment template
+├── parameters.json         # Deployment parameters
+├── modules/
+│   ├── container_app.bicep
+│   ├── openai.bicep
+│   ├── search_api.bicep
+│   └── registry.bicep
+└── README-DEPLOY.md        # Deployment instructions
 ```
 
-## Conventions (recommended)
+## Technology
 
-- Separate environments (dev/stage/prod) cleanly.
-- Prefer small reusable modules over one giant template.
-- Keep a clear resource naming scheme.
-- Document required permissions and prerequisites.
-- Ensure state is stored safely (remote state and locking when applicable).
+- **Language:** Bicep (ARM template abstraction)
+- **Platform:** Azure Container Apps
+- **Services:**
+  - Azure OpenAI (GPT-4o)
+  - Bing Web Search API
+  - Azure Container Registry
+  - Key Vault (secrets management)
+
+## Deployment (When Phase 5 Begins)
+
+Expected workflow:
+
+```bash
+# Deploy infrastructure
+az deployment group create \
+  --resource-group my-rg \
+  --template-file infra/main.bicep \
+  --parameters infra/parameters.json
+
+# Deploy application
+az acr build -r my-registry -t travel-agent:latest .
+az containerapp update -n travel-agent --image my-registry/travel-agent:latest
+```
+
+## Conventions
+
+- **Modular:** One .bicep file per Azure resource
+- **Parameterized:** All values in parameters.json, never hard-coded
+- **Secrets:** Use Key Vault for API keys, never in templates
+- **Documented:** Each template has comments explaining resources
+
+## Security
+
+- No secrets in source code
+- Use Azure Key Vault for API keys
+- Network security groups restrict access
+- Container images scanned for vulnerabilities
 
 ## How This Fits
 
-- Supports operational execution from [`entrypoints/`](../entrypoints/) (scheduled jobs, batch runs, services)
-- Often uses values/settings aligned with [`config/`](../config/) (but configs remain application-level)
-- May provision storage/compute used by artifacts in [`data/`](../data/)
+- Runs the FastAPI backend from ntrypoints/serve.py
+- Configures environment variables from config/
+- Deploys Docker image built from Dockerfile
+- Provisions Azure OpenAI and Bing Search APIs
 
-## Notes
+## See Also
 
-- If you add CI/CD later, `infra/` is where provisioning and deployment steps usually live.
+- Dockerfile — Container image definition
+- ntrypoints/serve.py — Application entry point
+- [docs/architecture.md](../docs/architecture.md) — System design
+- .squad/decisions.md — Infrastructure decisions
