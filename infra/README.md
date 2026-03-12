@@ -115,6 +115,11 @@ Before deploying, ensure you have:
    az account set --subscription <subscription-id>
    ```
 
+6. **Microsoft.Bing resource provider registration** (required when `deployBingSearch = true`)
+   ```bash
+   az provider register --namespace Microsoft.Bing
+   ```
+
 ## Deployment Guide
 
 ### Step 1: Create Resource Group
@@ -141,6 +146,13 @@ az deployment group create `
   --template-file infra/main.bicep `
   --parameters infra/parameters/dev.bicepparam
 
+# Optionally override Bing Search deployment for any environment
+az deployment group create `
+  --resource-group $RESOURCE_GROUP `
+  --template-file infra/main.bicep `
+  --parameters infra/parameters/dev.bicepparam `
+  --parameters deployBingSearch=true
+
 # Capture outputs
 $OUTPUTS = az deployment group show `
   --resource-group $RESOURCE_GROUP `
@@ -158,6 +170,8 @@ Write-Host "Backend URL: $BACKEND_URL"
 ```
 
 **Note**: Initial deployment takes ~10-15 minutes (OpenAI provisioning is the slowest).
+
+`deployBingSearch` controls whether the Bing Search module is deployed and whether the backend receives Bing Search secrets and environment variables. The dev parameter file disables Bing Search by default because some subscriptions do not have the `Microsoft.Bing` provider registered. The prod parameter file enables it by default.
 
 ### Step 3: Build and Push Docker Images
 
@@ -240,8 +254,8 @@ Start-Process $FRONTEND_URL
 | `AZURE_OPENAI_ENDPOINT` | OpenAI module output | Regular | Azure OpenAI endpoint URL |
 | `AZURE_OPENAI_API_KEY` | OpenAI module output | Secret | API key for OpenAI |
 | `AZURE_OPENAI_DEPLOYMENT` | OpenAI module output | Regular | Model deployment name (gpt-4o) |
-| `BING_SEARCH_ENDPOINT` | Bing module output | Regular | Bing Search API endpoint |
-| `BING_SEARCH_API_KEY` | Bing module output | Secret | API key for Bing Search |
+| `BING_SEARCH_ENDPOINT` | Bing module output | Regular | Bing Search API endpoint (only when `deployBingSearch = true`) |
+| `BING_SEARCH_API_KEY` | Bing module output | Secret | API key for Bing Search (only when `deployBingSearch = true`) |
 | `APP_VERSION` | Parameter | Regular | Application version tag |
 
 ### Frontend Container App
