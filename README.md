@@ -278,6 +278,7 @@ Python code follows:
 
 All significant architectural decisions are documented in:
 - **[docs/architecture.md](docs/architecture.md)** — Single source of truth for system design
+- **[docs/diagrams.md](docs/diagrams.md)** — Visual architecture diagrams (Mermaid)
 - **[.squad/decisions.md](.squad/decisions.md)** — Team decisions and approvals
 
 **For developers:** Read docs/architecture.md before making changes that affect agent flow, API contracts, or deployment patterns.

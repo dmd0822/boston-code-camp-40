@@ -4,6 +4,156 @@ Central record of all architecture, design, and implementation decisions. Update
 
 ---
 
+## 2026-03-12 — Agent Framework Integration Pattern
+
+**Author:** Batty | **Status:** Implemented in Phase 2
+
+Building Phase 2 agent layer using Microsoft Agent Framework (`agent-framework` package). Established consistent patterns for agent creation, system prompt storage, tool registration, response parsing, and error handling.
+
+**Decision:**
+
+### Agent Factory Pattern
+
+Each agent module provides `create_{agent}_agent(settings: Settings) -> Agent` factory:
+- Validates credentials (fail fast)
+- Creates AzureAIClient
+- Loads system prompt from `data/prompts/{agent}/system.md`
+- Registers tools (search_web)
+- Returns configured Agent
+
+### High-Level Async API
+
+Each agent module provides high-level async functions:
+```python
+async def {verb}_{noun}(inputs..., settings: Optional[Settings] = None) -> ReturnType:
+    # Create agent, build user prompt, run agent
+    # Parse JSON response (handle markdown code blocks)
+    # Validate with Pydantic, return typed result
+```
+
+Examples: `recommend_destinations()`, `find_points_of_interest()`, `find_events()`, `get_weather_forecast()`
+
+### System Prompts in Files
+
+System prompts stored in `data/prompts/{agent-name}/system.md` (NOT in Python source). Loaded at agent creation time. Rationale: separates prompt engineering from code; enables prompt versioning without code changes.
+
+### Tool Registration
+
+Tools defined with `@tool` decorator from agent-framework and registered in Agent constructor as list.
+
+### Response Parsing
+
+LLMs may wrap JSON in markdown code blocks. Parse defensively to extract content, then validate with Pydantic models.
+
+### Error Handling Strategy
+
+- Missing Azure OpenAI credentials: Raise ValueError from factory (fail fast, clear message)
+- Missing Bing Search credentials: Return empty results from search_web with warning log (graceful degradation)
+- HTTP errors (timeout, 401, 429): Log error, return empty results
+- JSON parse errors: Log error, return empty list/None
+- Pydantic validation errors: Log warning, skip invalid items
+- Unexpected exceptions: Log error, return empty list/None
+
+All agent functions return empty list or None on error, NEVER raise to caller (except credential validation errors).
+
+**Consequences:**
+- Benefits: Consistent API across all agents, clear separation (factory vs execution), prompts managed separately, graceful error handling, type-safe outputs
+- Trade-offs: Multiple layers add boilerplate, aggressive error suppression may hide dev issues, path resolution assumes project structure
+
+---
+
+## 2026-03-12 — Phase 3 Orchestration Pattern: Error Handling & Concurrency
+
+**Author:** Batty | **Status:** Implemented
+
+Implement two-phase orchestration with graceful degradation:
+- **Phase 1 (Sequential):** General Agent failure → empty itinerary with 200 status
+- **Phase 2 (Concurrent):** Specialist agent failures → partial data (empty lists, None)
+
+**Rationale:**
+- Better UX than cascading failures: if POI agent fails but Event/Weather succeed, user gets useful results
+- Empty itinerary preferable to 500 error when General Agent unavailable
+- Logs capture all failures for debugging without exposing to end user
+- Concurrency reduces latency: 3 specialist agents run in parallel per destination (asyncio.gather)
+- Settings injection enables testing: TravelOrchestrator takes Settings in __init__ (no global state)
+
+**Implementation:**
+
+Pattern: _safe_call wrapper
+```python
+async def _safe_call(agent_func, *args, default, **kwargs) -> T:
+    try:
+        return await agent_func(*args, **kwargs)
+    except Exception as exc:
+        logger.warning(f"Agent {agent_func.__name__} failed: {exc}. Using default: {default}")
+        return default
+```
+
+Pattern: Concurrent enrichment per destination
+```python
+enriched_destinations = await asyncio.gather(
+    *[self._enrich_destination(dest, profile.travel_dates)
+      for dest in destinations]
+)
+```
+
+**Consequences:**
+- Positive: System resilient to partial failures, performance scales with concurrency, clear separation of concerns
+- Negative: No retry logic in MVP, partial results may confuse users if not communicated in UI, no telemetry/metrics on agent failure rates
+
+**Files modified:**
+- `src/orchestrator/travel_orchestrator.py` — Full rewrite with _safe_call wrapper
+- `src/api/routes/itinerary.py` — Added Settings DI
+
+---
+
+## 2026-03-12 — Async/Sync Contract: Test Against Actual Framework Behavior
+
+**Author:** Zhora | **Status:** PROPOSED | **Decision Required:** Deckard or Batty
+
+Phase 2 testing found mismatch between expected contract and implementation:
+- Tests expect `search_web` synchronous: `results = search_web("query", settings)`
+- Batty's implementation uses async Microsoft Agent Framework `@tool` decorator
+
+Test results:
+- 67 Phase 1 tests: ✅ PASSING (Pydantic models)
+- 6 web search tests: ❌ FAILING (async/sync mismatch)
+- 19 agent tests: ❌ FAILING (function naming mismatch or not yet implemented)
+
+**Options:**
+
+**Option A:** Make search_web synchronous
+- Pros: Simpler to test, matches test contract
+- Cons: Doesn't align with async FastAPI and Agent Framework patterns
+
+**Option B:** Make tests async (RECOMMENDED)
+- Pros: Aligns with async framework architecture
+- Cons: Requires `pytest-asyncio` and `@pytest.mark.asyncio` decorators
+
+**Option C:** Provide both sync and async wrappers
+- Pros: Flexibility for different contexts
+- Cons: Maintenance overhead, potential confusion
+
+**Recommendation:** Option B — make tests async to match the framework's async-first architecture. Microsoft Agent Framework and FastAPI both expect async, so tests should validate the actual async contract.
+
+Changes needed:
+1. Add `pytest-asyncio` to requirements
+2. Add `@pytest.mark.asyncio` to all web search tests
+3. Change `results = search_web(...)` to `results = await search_web(...)`
+4. Update conftest `mock_search_web` fixture to handle async
+
+**Who needs to decide:** Deckard (architecture lead)
+
+---
+
+## 2026-03-12 — User Directive: Keep READMEs Updated Through Each Phase
+
+**Author:** Dave Davis (via Copilot) | **Date:** 2026-03-12T14-48 | **Status:** Documented
+
+User request captured for team memory: Keep all README files updated as work progresses through each phase.
+
+---
+
 ## 2026-03-12 — Core Architecture: FastAPI + Agent Framework + ConcurrentBuilder
 
 **Author:** Deckard | **Status:** Approved

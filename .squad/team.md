@@ -17,6 +17,7 @@
 | Pris | Frontend Dev | `.squad/agents/pris/charter.md` | ⚛️ Active |
 | Gaff | Infra/DevOps | `.squad/agents/gaff/charter.md` | ⚙️ Active |
 | Zhora | Tester | `.squad/agents/zhora/charter.md` | 🧪 Active |
+| Rachael | Diagram Specialist | `.squad/agents/rachael/charter.md` | 📊 Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Active |
 | Ralph | Work Monitor | — | 🔄 Monitor |
 

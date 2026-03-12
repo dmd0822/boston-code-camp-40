@@ -9,6 +9,8 @@
 
 ## Table of Contents
 
+📊 **[Visual Architecture Diagrams](diagrams.md)** — Mermaid diagrams for all system components
+
 1. [System Overview](#1-system-overview)
 2. [Backend Architecture](#2-backend-architecture)
 3. [Agent Design](#3-agent-design)

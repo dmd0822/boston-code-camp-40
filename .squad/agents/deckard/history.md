@@ -140,13 +140,20 @@ Updated all 16 README.md files across the repository to reflect the Travel Agent
 - **Deckard:** ✅ Architecture approved, decisions recorded
 - **Pris:** 🚀 Ready to build UI against `/api/itinerary` mock response
 - **Gaff:** 🚀 Ready to containerize `entrypoints/serve.py` (port 8000)
+- **Rachael:** ✅ 7 Mermaid architecture diagrams created, cross-linked from docs/
 
 **What's been recorded:**
-- Orchestration logs: `.squad/orchestration-log/2026-03-12T13-55-batty.md`, `.../zhora.md`
-- Session log: `.squad/log/2026-03-12T13-55-phase1-foundation.md`
+- Orchestration logs: `.squad/orchestration-log/2026-03-12T13-55-batty.md`, `.../zhora.md`, `.../2026-03-12T15-37-agent-0-rachael.md`
+- Session logs: `.squad/log/2026-03-12T13-55-phase1-foundation.md`, `.../2026-03-12T15-37-diagrams-creation.md`
 - Decisions merged: `.squad/decisions/decisions.md` (inbox cleared)
+
+**Diagrams now available:**
+- `docs/diagrams.md` — 7 Mermaid diagrams (system overview, orchestration sequence, data flow, class diagram, API flow, infrastructure, error handling)
+- Cross-linked from `docs/architecture.md` and `README.md`
+- Conventions documented (color coding, multi-line labels, maintenance workflow)
 
 **Open decisions awaiting input:**
 - **source_url optionality** (Zhora proposal) — awaits decision on grounding enforcement
+- **Async/Sync contract** (Zhora proposal) — tests vs Agent Framework async patterns
 
 **Next phase:** Phase 2 agents (Batty wiring real agents, Zhora expanding to integration tests) can begin independently.
