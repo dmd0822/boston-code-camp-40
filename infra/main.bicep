@@ -43,14 +43,14 @@ module containerAppEnv 'modules/container-app-env.bicep' = {
 }
 
 // ========================================
-// Module 3: Azure OpenAI with GPT-4o
+// Module 3: AI Foundry (Account + Project + Model)
 // ========================================
-module openai 'modules/openai.bicep' = {
-  name: 'openai-deployment'
+module aiFoundry 'modules/ai-foundry.bicep' = {
+  name: 'ai-foundry-deployment'
   params: {
-    name: '${baseName}-openai'
+    name: '${baseName}-ai'
     location: location
-    skuName: 'S0'
+    projectName: '${baseName}-ai-project'
     modelName: 'gpt-4o'
     modelVersion: openaiModelVersion
     deploymentName: 'gpt-4o'
@@ -60,46 +60,7 @@ module openai 'modules/openai.bicep' = {
 }
 
 // ========================================
-// Module 4: AI Foundry Hub
-// ========================================
-module aiFoundryHub 'modules/ai-foundry-hub.bicep' = {
-  name: 'ai-foundry-hub-deployment'
-  params: {
-    name: '${baseName}-ai-hub'
-    location: location
-    tags: tags
-  }
-}
-
-// ========================================
-// Module 5: AI Foundry Project
-// ========================================
-module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
-  name: 'ai-foundry-project-deployment'
-  params: {
-    name: '${baseName}-ai-project'
-    location: location
-    hubId: aiFoundryHub.outputs.id
-    tags: tags
-  }
-}
-
-// ========================================
-// Module 6: OpenAI Connection to AI Foundry Hub
-// ========================================
-module openaiConnection 'modules/ai-foundry-connection.bicep' = {
-  name: 'openai-connection-deployment'
-  params: {
-    hubName: aiFoundryHub.outputs.name
-    connectionName: 'openai-connection'
-    openaiEndpoint: openai.outputs.endpoint
-    openaiApiKey: openai.outputs.key
-    openaiResourceId: openai.outputs.id
-  }
-}
-
-// ========================================
-// Module 7: Backend Container App
+// Module 4: Backend Container App
 // ========================================
 module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
@@ -119,13 +80,13 @@ module backendApp 'modules/container-app.bicep' = {
     secrets: [
       {
         name: 'azure-openai-api-key'
-        value: openai.outputs.key
+        value: aiFoundry.outputs.key
       }
     ]
     env: [
       {
         name: 'AZURE_OPENAI_ENDPOINT'
-        value: openai.outputs.endpoint
+        value: aiFoundry.outputs.endpoint
       }
       {
         name: 'AZURE_OPENAI_API_KEY'
@@ -133,7 +94,7 @@ module backendApp 'modules/container-app.bicep' = {
       }
       {
         name: 'AZURE_OPENAI_DEPLOYMENT'
-        value: openai.outputs.deploymentName
+        value: aiFoundry.outputs.deploymentName
       }
       {
         name: 'APP_VERSION'
@@ -145,7 +106,7 @@ module backendApp 'modules/container-app.bicep' = {
 }
 
 // ========================================
-// Module 8: Frontend Container App
+// Module 5: Frontend Container App
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
@@ -185,11 +146,11 @@ output backendUrl string = backendApp.outputs.url
 @description('The login server for the container registry')
 output acrLoginServer string = acr.outputs.loginServer
 
-@description('The Azure OpenAI endpoint')
-output openaiEndpoint string = openai.outputs.endpoint
+@description('The AI Foundry endpoint')
+output aiFoundryEndpoint string = aiFoundry.outputs.endpoint
 
-@description('The name of the AI Foundry Hub')
-output foundryHubName string = aiFoundryHub.outputs.name
+@description('The name of the AI Foundry account')
+output aiFoundryName string = aiFoundry.outputs.name
 
-@description('The name of the AI Foundry Project')
-output foundryProjectName string = aiFoundryProject.outputs.name
+@description('The name of the AI Foundry project')
+output aiFoundryProjectName string = aiFoundry.outputs.projectName
