@@ -117,31 +117,34 @@ Before deploying, ensure you have:
 
 ## Deployment Guide
 
-### Step 1: Deploy Infrastructure
+### Step 1: Create Resource Group
 
-The deployment is subscription-scoped and will automatically create the resource group if it doesn't exist:
+The resource group must exist before deployment. Resource group names are configured in `infra/environments.json`:
 
 ```bash
-# Set variables
+# Set variables from config
+$RESOURCE_GROUP = "rg-travel-agent-dev"
 $LOCATION = "eastus2"
 
-# Deploy with dev parameters (resource group is created automatically)
-az deployment sub create `
-  --location $LOCATION `
+# Create resource group
+az group create --name $RESOURCE_GROUP --location $LOCATION
+```
+
+### Step 2: Deploy Infrastructure
+
+Deploy into the pre-existing resource group:
+
+```bash
+# Deploy with dev parameters
+az deployment group create `
+  --resource-group $RESOURCE_GROUP `
   --template-file infra/main.bicep `
   --parameters infra/parameters/dev.bicepparam
 
-# Or deploy with a custom resource group name
-az deployment sub create `
-  --location $LOCATION `
-  --template-file infra/main.bicep `
-  --parameters infra/parameters/dev.bicepparam `
-  --parameters resourceGroupName='my-custom-rg-name'
-
 # Capture outputs
-$DEPLOYMENT_NAME = "main"
-$OUTPUTS = az deployment sub show `
-  --name $DEPLOYMENT_NAME `
+$OUTPUTS = az deployment group show `
+  --resource-group $RESOURCE_GROUP `
+  --name main `
   --query properties.outputs `
   --output json | ConvertFrom-Json
 
@@ -397,8 +400,8 @@ For production, use the prod parameter file and consider:
 Deploy production:
 
 ```bash
-az deployment sub create `
-  --location eastus2 `
+az deployment group create `
+  --resource-group rg-travel-agent-prod `
   --template-file infra/main.bicep `
   --parameters infra/parameters/prod.bicepparam
 ```

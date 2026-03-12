@@ -12,12 +12,30 @@ permissions:
   contents: read
 
 env:
-  LOCATION: westus3
   ENVIRONMENT: dev
 
 jobs:
+  load-config:
+    name: Load Environment Config
+    runs-on: ubuntu-latest
+    outputs:
+      resource_group: ${{ steps.config.outputs.resource_group }}
+      location: ${{ steps.config.outputs.location }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read environment config
+        id: config
+        run: |
+          RESOURCE_GROUP=$(jq -r '.dev.resourceGroupName' infra/environments.json)
+          LOCATION=$(jq -r '.dev.location' infra/environments.json)
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+          echo "location=$LOCATION" >> $GITHUB_OUTPUT
+
   validate:
     name: Validate Bicep
+    needs: load-config
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,14 +52,14 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            az deployment sub validate \
-              --location ${{ env.LOCATION }} \
+            az deployment group validate \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
               --template-file infra/main.bicep \
               --parameters infra/parameters/dev.bicepparam
 
   what-if:
     name: What-If Preview
-    needs: validate
+    needs: [load-config, validate]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,14 +76,14 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            az deployment sub what-if \
-              --location ${{ env.LOCATION }} \
+            az deployment group what-if \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
               --template-file infra/main.bicep \
               --parameters infra/parameters/dev.bicepparam
 
   deploy:
     name: Deploy to Dev
-    needs: what-if
+    needs: [load-config, what-if]
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -83,8 +101,8 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            az deployment sub create \
-              --location ${{ env.LOCATION }} \
+            az deployment group create \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
               --template-file infra/main.bicep \
               --parameters infra/parameters/dev.bicepparam \
               --name "infra-dev-${{ github.run_number }}"
@@ -94,7 +112,10 @@ jobs:
         with:
           inlineScript: |
             echo "## Deployment Outputs" >> $GITHUB_STEP_SUMMARY
-            az deployment sub show \
+            echo "**Resource Group:** ${{ needs.load-config.outputs.resource_group }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            az deployment group show \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
               --name "infra-dev-${{ github.run_number }}" \
               --query "properties.outputs" \
               --output table >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,10 @@
+{
+  "dev": {
+    "resourceGroupName": "rg-travel-agent-dev",
+    "location": "eastus2"
+  },
+  "prod": {
+    "resourceGroupName": "rg-travel-agent-prod",
+    "location": "eastus2"
+  }
+}

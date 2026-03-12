@@ -38,39 +38,15 @@ class TestMainBicep:
         assert re.search(r"param\s+location\s+string", main_bicep_content), \
             "main.bicep should have location parameter"
 
-    def test_target_scope_is_subscription(self, main_bicep_content: str):
-        """Test that main.bicep targets subscription scope."""
-        assert re.search(r"targetScope\s*=\s*'subscription'", main_bicep_content), \
-            "main.bicep should have targetScope = 'subscription'"
+    def test_resource_group_scoped(self, main_bicep_content: str):
+        """Test that main.bicep is resource-group scoped (no targetScope)."""
+        assert "targetScope" not in main_bicep_content, \
+            "main.bicep should not set targetScope (defaults to resourceGroup)"
 
-    def test_has_resource_group_name_parameter(self, main_bicep_content: str):
-        """Test that main.bicep has resourceGroupName parameter."""
-        assert re.search(r"param\s+resourceGroupName\s+string", main_bicep_content), \
-            "main.bicep should have resourceGroupName parameter"
-
-    def test_resource_group_default_naming(self, main_bicep_content: str):
-        """Test that resourceGroupName defaults to rg-travel-agent-{env}."""
-        assert re.search(
-            r"param\s+resourceGroupName\s+string\s*=\s*'rg-travel-agent-\$\{environmentName\}'",
-            main_bicep_content
-        ), "resourceGroupName should default to 'rg-travel-agent-${environmentName}'"
-
-    def test_creates_resource_group(self, main_bicep_content: str):
-        """Test that main.bicep creates a resource group resource."""
-        assert re.search(
-            r"resource\s+\w+\s+'Microsoft\.Resources/resourceGroups@",
-            main_bicep_content
-        ), "main.bicep should create a Microsoft.Resources/resourceGroups resource"
-
-    def test_modules_scoped_to_resource_group(self, main_bicep_content: str):
-        """Test that modules are scoped to the resource group."""
-        assert "scope: rg" in main_bicep_content, \
-            "Modules should be scoped to the resource group"
-
-    def test_outputs_resource_group_name(self, main_bicep_content: str):
-        """Test that main.bicep outputs the resource group name."""
-        assert re.search(r"output\s+resourceGroupName\s+string", main_bicep_content), \
-            "main.bicep should output resourceGroupName"
+    def test_location_defaults_to_resource_group(self, main_bicep_content: str):
+        """Test that location defaults to resourceGroup().location."""
+        assert "resourceGroup().location" in main_bicep_content, \
+            "location should default to resourceGroup().location"
 
     def test_has_project_tag(self, main_bicep_content: str):
         """Test that main.bicep defines project tag."""
@@ -619,22 +595,54 @@ class TestParameterFiles:
         assert re.search(r"environmentName\s*=\s*['\"]prod['\"]", prod_param_content), \
             "prod.bicepparam should set environmentName = 'prod'"
 
-    def test_dev_has_resource_group_name(self, dev_param_content: str):
-        """Test that dev.bicepparam sets resourceGroupName."""
-        assert re.search(r"resourceGroupName\s*=", dev_param_content), \
-            "dev.bicepparam should set resourceGroupName"
 
-    def test_prod_has_resource_group_name(self, prod_param_content: str):
-        """Test that prod.bicepparam sets resourceGroupName."""
-        assert re.search(r"resourceGroupName\s*=", prod_param_content), \
-            "prod.bicepparam should set resourceGroupName"
+class TestEnvironmentsConfig:
+    """Tests for the environments.json configuration file."""
 
-    def test_dev_resource_group_uses_dev(self, dev_param_content: str):
+    @pytest.fixture
+    def config_path(self) -> Path:
+        """Path to environments.json."""
+        return Path(__file__).parent.parent.parent / "infra" / "environments.json"
+
+    @pytest.fixture
+    def config(self, config_path: Path) -> dict:
+        """Read and parse environments.json."""
+        import json
+        return json.loads(config_path.read_text())
+
+    def test_environments_json_exists(self, config_path: Path):
+        """Test that environments.json exists."""
+        assert config_path.exists(), "infra/environments.json does not exist"
+
+    def test_has_dev_environment(self, config: dict):
+        """Test that config has a dev environment."""
+        assert "dev" in config, "environments.json should have a 'dev' entry"
+
+    def test_has_prod_environment(self, config: dict):
+        """Test that config has a prod environment."""
+        assert "prod" in config, "environments.json should have a 'prod' entry"
+
+    def test_dev_has_resource_group_name(self, config: dict):
+        """Test that dev config has resourceGroupName."""
+        assert "resourceGroupName" in config["dev"], \
+            "dev config should have resourceGroupName"
+
+    def test_prod_has_resource_group_name(self, config: dict):
+        """Test that prod config has resourceGroupName."""
+        assert "resourceGroupName" in config["prod"], \
+            "prod config should have resourceGroupName"
+
+    def test_dev_has_location(self, config: dict):
+        """Test that dev config has location."""
+        assert "location" in config["dev"], \
+            "dev config should have location"
+
+    def test_dev_resource_group_contains_dev(self, config: dict):
         """Test that dev resource group name contains 'dev'."""
-        assert re.search(r"resourceGroupName\s*=\s*'[^']*dev[^']*'", dev_param_content), \
-            "dev.bicepparam resourceGroupName should contain 'dev'"
+        assert "dev" in config["dev"]["resourceGroupName"], \
+            "dev resourceGroupName should contain 'dev'"
 
-    def test_prod_resource_group_uses_prod(self, prod_param_content: str):
+    def test_prod_resource_group_contains_prod(self, config: dict):
         """Test that prod resource group name contains 'prod'."""
-        assert re.search(r"resourceGroupName\s*=\s*'[^']*prod[^']*'", prod_param_content), \
-            "prod.bicepparam resourceGroupName should contain 'prod'"
+        assert "prod" in config["prod"]["resourceGroupName"], \
+            "prod resourceGroupName should contain 'prod'"
