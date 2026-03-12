@@ -1,0 +1,100 @@
+name: Deploy Infrastructure (Dev)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  LOCATION: eastus2
+  ENVIRONMENT: dev
+
+jobs:
+  validate:
+    name: Validate Bicep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate Bicep
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment sub validate \
+              --location ${{ env.LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/dev.bicepparam
+
+  what-if:
+    name: What-If Preview
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-If
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment sub what-if \
+              --location ${{ env.LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/dev.bicepparam
+
+  deploy:
+    name: Deploy to Dev
+    needs: what-if
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Infrastructure
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment sub create \
+              --location ${{ env.LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/dev.bicepparam \
+              --name "infra-dev-${{ github.run_number }}"
+
+      - name: Capture Outputs
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "## Deployment Outputs" >> $GITHUB_STEP_SUMMARY
+            az deployment sub show \
+              --name "infra-dev-${{ github.run_number }}" \
+              --query "properties.outputs" \
+              --output table >> $GITHUB_STEP_SUMMARY
