@@ -10,9 +10,6 @@ param openaiModelVersion string = '2024-05-13'
 @description('The version tag for the application')
 param appVersion string = '0.1.0'
 
-@description('Deploy the Bing Search resource and wire it into the backend')
-param deployBingSearch bool = true
-
 // Resource naming convention: travel-agent-{environmentName}-{resource}
 var baseName = 'travel-agent-${environmentName}'
 var tags = {
@@ -102,21 +99,9 @@ module openaiConnection 'modules/ai-foundry-connection.bicep' = {
 }
 
 // ========================================
-// Module 7: Bing Search API
+// Module 7: Backend Container App
 // ========================================
-module bingSearch 'modules/bing-search.bicep' = if (deployBingSearch) {
-  name: 'bing-search-deployment'
-  params: {
-    name: '${baseName}-bing'
-    skuName: 'S1'
-    tags: tags
-  }
-}
-
-// ========================================
-// Module 8: Backend Container App
-// ========================================
-module backendApp 'modules/container-app.bicep' = if (deployBingSearch) {
+module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
   params: {
     name: '${baseName}-backend'
@@ -136,61 +121,6 @@ module backendApp 'modules/container-app.bicep' = if (deployBingSearch) {
         name: 'azure-openai-api-key'
         value: openai.outputs.key
       }
-      {
-        name: 'bing-search-api-key'
-        value: bingSearch.outputs.key
-      }
-    ]
-    env: [
-      {
-        name: 'AZURE_OPENAI_ENDPOINT'
-        value: openai.outputs.endpoint
-      }
-      {
-        name: 'AZURE_OPENAI_API_KEY'
-        secretRef: 'azure-openai-api-key'
-      }
-      {
-        name: 'AZURE_OPENAI_DEPLOYMENT'
-        value: openai.outputs.deploymentName
-      }
-      {
-        name: 'BING_SEARCH_ENDPOINT'
-        value: bingSearch!.outputs.endpoint
-      }
-      {
-        name: 'BING_SEARCH_API_KEY'
-        secretRef: 'bing-search-api-key'
-      }
-      {
-        name: 'APP_VERSION'
-        value: appVersion
-      }
-    ]
-    tags: tags
-  }
-}
-
-module backendAppWithoutBing 'modules/container-app.bicep' = if (!deployBingSearch) {
-  name: 'backend-app-deployment-without-bing'
-  params: {
-    name: '${baseName}-backend'
-    location: location
-    environmentId: containerAppEnv.outputs.id
-    containerImage: '${acr.outputs.loginServer}/travel-agent-backend:${appVersion}'
-    targetPort: 8000
-    registryServer: acr.outputs.loginServer
-    registryUsername: acr.outputs.adminUsername
-    registryPassword: acr.outputs.adminPassword
-    cpu: '0.5'
-    memory: '1Gi'
-    minReplicas: 0
-    maxReplicas: 3
-    secrets: [
-      {
-        name: 'azure-openai-api-key'
-        value: openai.outputs.key
-      }
     ]
     env: [
       {
@@ -213,11 +143,9 @@ module backendAppWithoutBing 'modules/container-app.bicep' = if (!deployBingSear
     tags: tags
   }
 }
-
-var backendAppUrl = deployBingSearch ? backendApp!.outputs.url : backendAppWithoutBing!.outputs.url
 
 // ========================================
-// Module 9: Frontend Container App
+// Module 8: Frontend Container App
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
@@ -238,7 +166,7 @@ module frontendApp 'modules/container-app.bicep' = {
     env: [
       {
         name: 'BACKEND_URL'
-        value: backendAppUrl
+        value: backendApp.outputs.url
       }
     ]
     tags: tags
@@ -252,16 +180,13 @@ module frontendApp 'modules/container-app.bicep' = {
 output frontendUrl string = frontendApp.outputs.url
 
 @description('The URL of the backend API')
-output backendUrl string = backendAppUrl
+output backendUrl string = backendApp.outputs.url
 
 @description('The login server for the container registry')
 output acrLoginServer string = acr.outputs.loginServer
 
 @description('The Azure OpenAI endpoint')
 output openaiEndpoint string = openai.outputs.endpoint
-
-@description('The Bing Search endpoint')
-output bingSearchEndpoint string = deployBingSearch ? bingSearch!.outputs.endpoint : ''
 
 @description('The name of the AI Foundry Hub')
 output foundryHubName string = aiFoundryHub.outputs.name

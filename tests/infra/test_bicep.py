@@ -38,13 +38,6 @@ class TestMainBicep:
         assert re.search(r"param\s+location\s+string", main_bicep_content), \
             "main.bicep should have location parameter"
 
-    def test_has_deploy_bing_search_parameter(self, main_bicep_content: str):
-        """Test that main.bicep has deployBingSearch parameter."""
-        assert re.search(
-            r"param\s+deployBingSearch\s+bool\s*=\s*true",
-            main_bicep_content,
-        ), "main.bicep should have deployBingSearch parameter"
-
     def test_resource_group_scoped(self, main_bicep_content: str):
         """Test that main.bicep is resource-group scoped (no targetScope)."""
         assert "targetScope" not in main_bicep_content, \
@@ -80,14 +73,10 @@ class TestMainBicep:
         assert "modules/openai.bicep" in main_bicep_content, \
             "main.bicep should reference modules/openai.bicep"
 
-    def test_references_bing_search_module_conditionally(
-        self, main_bicep_content: str
-    ):
-        """Test that main.bicep conditionally references bing-search.bicep."""
-        assert re.search(
-            r"module\s+bingSearch\s+'modules/bing-search\.bicep'\s*=\s*if\s*\(\s*deployBingSearch\s*\)",
-            main_bicep_content,
-        ), "main.bicep should conditionally deploy the Bing Search module"
+    def test_does_not_reference_bing_search(self, main_bicep_content: str):
+        """Test that main.bicep does not reference bing-search module."""
+        assert "bing-search.bicep" not in main_bicep_content, \
+            "main.bicep should not reference bing-search.bicep"
 
     def test_passes_azure_openai_endpoint(self, main_bicep_content: str):
         """Test that AZURE_OPENAI_ENDPOINT is passed to backend."""
@@ -104,53 +93,17 @@ class TestMainBicep:
         assert re.search(r"name:\s*['\"]AZURE_OPENAI_DEPLOYMENT['\"]", main_bicep_content), \
             "main.bicep should pass AZURE_OPENAI_DEPLOYMENT to backend"
 
-    def test_passes_bing_search_api_key_conditionally(
-        self, main_bicep_content: str
-    ):
-        """Test that Bing Search env vars are only present in the Bing-enabled backend."""
-        backend_with_bing = re.search(
-            r"module\s+backendApp\s+'modules/container-app\.bicep'\s*=\s*if\s*\(\s*deployBingSearch\s*\)\s*\{.*?\n\}",
-            main_bicep_content,
-            re.DOTALL,
-        )
-        assert backend_with_bing, "main.bicep should have a Bing-enabled backend module"
-        assert "BING_SEARCH_ENDPOINT" in backend_with_bing.group(0)
-        assert "BING_SEARCH_API_KEY" in backend_with_bing.group(0)
+    def test_no_bing_search_env_vars(self, main_bicep_content: str):
+        """Test that Bing Search env vars are not in main.bicep."""
+        assert "BING_SEARCH_ENDPOINT" not in main_bicep_content, \
+            "main.bicep should not have BING_SEARCH_ENDPOINT"
+        assert "BING_SEARCH_API_KEY" not in main_bicep_content, \
+            "main.bicep should not have BING_SEARCH_API_KEY"
 
-    def test_passes_bing_search_secret_conditionally(
-        self, main_bicep_content: str
-    ):
-        """Test that bing-search-api-key is only present in the Bing-enabled backend."""
-        backend_with_bing = re.search(
-            r"module\s+backendApp\s+'modules/container-app\.bicep'\s*=\s*if\s*\(\s*deployBingSearch\s*\)\s*\{.*?\n\}",
-            main_bicep_content,
-            re.DOTALL,
-        )
-        assert backend_with_bing, "main.bicep should have a Bing-enabled backend module"
-        assert re.search(
-            r"name:\s*['\"]bing-search-api-key['\"].*value:\s*bingSearch!?\.outputs\.key",
-            backend_with_bing.group(0),
-            re.DOTALL,
-        ), "main.bicep should pass bingSearch.outputs.key when deployBingSearch is true"
-
-        backend_without_bing = re.search(
-            r"module\s+backendAppWithoutBing\s+'modules/container-app\.bicep'\s*=\s*if\s*\(\s*!deployBingSearch\s*\)\s*\{.*?\n\}",
-            main_bicep_content,
-            re.DOTALL,
-        )
-        assert backend_without_bing, "main.bicep should have a backend module for deployBingSearch = false"
-        assert "bing-search-api-key" not in backend_without_bing.group(0)
-        assert "BING_SEARCH_API_KEY" not in backend_without_bing.group(0)
-        assert "BING_SEARCH_ENDPOINT" not in backend_without_bing.group(0)
-
-    def test_outputs_bing_search_endpoint_conditionally(
-        self, main_bicep_content: str
-    ):
-        """Test that bingSearchEndpoint output is conditional."""
-        assert re.search(
-            r"output\s+bingSearchEndpoint\s+string\s*=\s*deployBingSearch\s*\?\s*bingSearch!?\.outputs\.endpoint\s*:\s*''",
-            main_bicep_content,
-        ), "main.bicep should output bingSearchEndpoint conditionally"
+    def test_no_bing_search_output(self, main_bicep_content: str):
+        """Test that main.bicep has no bingSearchEndpoint output."""
+        assert "bingSearchEndpoint" not in main_bicep_content, \
+            "main.bicep should not have bingSearchEndpoint output"
 
     def test_outputs_frontend_url(self, main_bicep_content: str):
         """Test that main.bicep outputs frontendUrl."""
@@ -319,45 +272,6 @@ class TestOpenAIModule:
         """Test that module has model deployment configuration."""
         assert "deployments" in module_content or "deployment" in module_content, \
             "Module should configure model deployment"
-
-    def test_has_output_declarations(self, module_content: str):
-        """Test that module has output declarations."""
-        assert re.search(r"output\s+\w+", module_content), \
-            "Module should have output declarations"
-
-
-class TestBingSearchModule:
-    """Tests for the bing-search.bicep module."""
-
-    @pytest.fixture
-    def module_path(self) -> Path:
-        """Path to bing-search.bicep module."""
-        return Path(__file__).parent.parent.parent / "infra" / "modules" / "bing-search.bicep"
-
-    @pytest.fixture
-    def module_content(self, module_path: Path) -> str:
-        """Read module content."""
-        return module_path.read_text()
-
-    def test_module_exists(self, module_path: Path):
-        """Test that bing-search.bicep exists."""
-        assert module_path.exists(), "bing-search.bicep does not exist"
-        assert module_path.stat().st_size > 0, "bing-search.bicep is empty"
-
-    def test_has_description_decorators(self, module_content: str):
-        """Test that parameters have @description decorators."""
-        assert "@description(" in module_content, \
-            "Module should have @description decorators on parameters"
-
-    def test_creates_bing_account(self, module_content: str):
-        """Test that module creates Microsoft.Bing/accounts resource."""
-        assert "Microsoft.Bing/accounts" in module_content, \
-            "Module should create Microsoft.Bing/accounts resource"
-
-    def test_location_is_global(self, module_content: str):
-        """Test that location is set to 'global' for Bing Search."""
-        assert re.search(r"location:\s*['\"]global['\"]", module_content), \
-            "Bing Search location should be 'global'"
 
     def test_has_output_declarations(self, module_content: str):
         """Test that module has output declarations."""
@@ -643,16 +557,6 @@ class TestParameterFiles:
         """Test that prod.bicepparam uses environmentName = 'prod'."""
         assert re.search(r"environmentName\s*=\s*['\"]prod['\"]", prod_param_content), \
             "prod.bicepparam should set environmentName = 'prod'"
-
-    def test_dev_disables_bing_search_deployment(self, dev_param_content: str):
-        """Test that dev.bicepparam disables Bing Search deployment."""
-        assert re.search(r"deployBingSearch\s*=\s*false", dev_param_content), \
-            "dev.bicepparam should set deployBingSearch = false"
-
-    def test_prod_enables_bing_search_deployment(self, prod_param_content: str):
-        """Test that prod.bicepparam enables Bing Search deployment."""
-        assert re.search(r"deployBingSearch\s*=\s*true", prod_param_content), \
-            "prod.bicepparam should set deployBingSearch = true"
 
 
 class TestEnvironmentsConfig:
