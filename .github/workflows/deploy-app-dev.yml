@@ -1,0 +1,199 @@
+name: Build, Test & Deploy (Dev)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'notebooks/**'
+      - 'reports/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. Load environment config
+  # ──────────────────────────────────────────────
+  load-config:
+    name: Load Config
+    runs-on: ubuntu-latest
+    outputs:
+      resource_group: ${{ steps.config.outputs.resource_group }}
+      location: ${{ steps.config.outputs.location }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read environment config
+        id: config
+        run: |
+          RESOURCE_GROUP=$(jq -r '.dev.resourceGroupName' infra/environments.json)
+          LOCATION=$(jq -r '.dev.location' infra/environments.json)
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+          echo "location=$LOCATION" >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────
+  # 2a. Backend tests
+  # ──────────────────────────────────────────────
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pytest
+        run: python -m pytest tests/ -v --tb=short
+
+  # ──────────────────────────────────────────────
+  # 2b. Frontend tests
+  # ──────────────────────────────────────────────
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run vitest
+        run: npm run test
+
+  # ──────────────────────────────────────────────
+  # 3. Build & push Docker images to ACR
+  # ──────────────────────────────────────────────
+  build:
+    name: Build & Push Images
+    needs: [load-config, test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    outputs:
+      backend_image: ${{ steps.tags.outputs.backend_image }}
+      frontend_image: ${{ steps.tags.outputs.frontend_image }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR login server
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list -g ${{ needs.load-config.outputs.resource_group }} --query "[0].name" -o tsv)
+          ACR_SERVER=$(az acr show -n "$ACR_NAME" --query "loginServer" -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "server=$ACR_SERVER" >> $GITHUB_OUTPUT
+
+      - name: ACR Login
+        run: az acr login -n ${{ steps.acr.outputs.name }}
+
+      - name: Generate image tags
+        id: tags
+        run: |
+          SHA="${GITHUB_SHA::8}"
+          echo "backend_image=${{ steps.acr.outputs.server }}/travel-agent-backend:${SHA}" >> $GITHUB_OUTPUT
+          echo "frontend_image=${{ steps.acr.outputs.server }}/travel-agent-frontend:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build & push backend image
+        run: |
+          docker build -t ${{ steps.tags.outputs.backend_image }} -f Dockerfile .
+          docker push ${{ steps.tags.outputs.backend_image }}
+
+      - name: Build & push frontend image
+        run: |
+          docker build -t ${{ steps.tags.outputs.frontend_image }} -f frontend/Dockerfile frontend/
+          docker push ${{ steps.tags.outputs.frontend_image }}
+
+  # ──────────────────────────────────────────────
+  # 4. Deploy to Container Apps
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to Dev
+    needs: [load-config, build]
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy backend container
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name travel-agent-dev-backend \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
+              --image ${{ needs.build.outputs.backend_image }}
+
+      - name: Get backend URL
+        id: backend
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            FQDN=$(az containerapp show \
+              --name travel-agent-dev-backend \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
+              --query "properties.configuration.ingress.fqdn" -o tsv)
+            echo "url=https://${FQDN}" >> $GITHUB_OUTPUT
+
+      - name: Deploy frontend container
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name travel-agent-dev-frontend \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
+              --image ${{ needs.build.outputs.frontend_image }} \
+              --set-env-vars "BACKEND_URL=${{ steps.backend.outputs.url }}"
+
+      - name: Verify deployment
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            FRONTEND_FQDN=$(az containerapp show \
+              --name travel-agent-dev-frontend \
+              --resource-group ${{ needs.load-config.outputs.resource_group }} \
+              --query "properties.configuration.ingress.fqdn" -o tsv)
+
+            echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+            echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+            echo "| Frontend | https://${FRONTEND_FQDN} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Backend | ${{ steps.backend.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Backend Image | \`${{ needs.build.outputs.backend_image }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| Frontend Image | \`${{ needs.build.outputs.frontend_image }}\` |" >> $GITHUB_STEP_SUMMARY

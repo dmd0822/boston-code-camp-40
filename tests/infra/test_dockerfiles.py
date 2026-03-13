@@ -152,9 +152,10 @@ class TestFrontendDockerfile:
             "Frontend Dockerfile should expose port 80"
 
     def test_copies_nginx_conf(self, dockerfile_content: str):
-        """Test that nginx.conf is copied."""
-        assert re.search(r'COPY\s+.*nginx\.conf', dockerfile_content), \
-            "Dockerfile should copy nginx.conf"
+        """Test that nginx.conf.template is copied."""
+        assert re.search(
+            r'COPY\s+.*nginx\.conf\.template', dockerfile_content
+        ), "Dockerfile should copy nginx.conf.template"
 
 
 class TestNginxConfig:
@@ -162,18 +163,18 @@ class TestNginxConfig:
 
     @pytest.fixture
     def nginx_conf_path(self) -> Path:
-        """Path to the nginx configuration file."""
-        return Path(__file__).parent.parent.parent / "frontend" / "nginx.conf"
+        """Path to the nginx configuration template."""
+        return Path(__file__).parent.parent.parent / "frontend" / "nginx.conf.template"
 
     @pytest.fixture
     def nginx_conf_content(self, nginx_conf_path: Path) -> str:
-        """Read the nginx configuration content."""
+        """Read the nginx configuration template content."""
         return nginx_conf_path.read_text()
 
     def test_nginx_conf_exists(self, nginx_conf_path: Path):
-        """Test that nginx.conf exists."""
-        assert nginx_conf_path.exists(), "nginx.conf does not exist"
-        assert nginx_conf_path.stat().st_size > 0, "nginx.conf is empty"
+        """Test that nginx.conf.template exists."""
+        assert nginx_conf_path.exists(), "nginx.conf.template does not exist"
+        assert nginx_conf_path.stat().st_size > 0, "nginx.conf.template is empty"
 
     def test_has_proxy_pass_for_api(self, nginx_conf_content: str):
         """Test that nginx.conf contains proxy_pass directive for /api."""
