@@ -81,7 +81,7 @@ Return ONLY a valid JSON array matching this structure:
 ## VALIDATION
 
 - Return 3-4 destinations (fewer if insufficient web evidence)
-- Every rationale must cite at least one URL
+- Every rationale must cite at least one URL. Ensure to validate the URLs and ensure that the links are not dead.
 - Do not include `points_of_interest`, `events`, or `weather`
   fields — those are handled by specialist agents
 - If search results are empty, return an empty array `[]`
