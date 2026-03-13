@@ -7,6 +7,9 @@ param location string = resourceGroup().location
 @description('The version of the GPT-4o model to deploy')
 param openaiModelVersion string = '2024-05-13'
 
+@description('Whether to create role assignments (set false if they already exist)')
+param createRoleAssignments bool = true
+
 // Resource naming convention: travel-agent-{environmentName}-{resource}
 var baseName = 'travel-agent-${environmentName}'
 var tags = {
@@ -43,19 +46,15 @@ module acr 'modules/acr.bicep' = {
 // ========================================
 // Role: AcrPull for the managed identity on ACR
 // ========================================
-resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acrResource.id, acrPullIdentity.id, acrPullRoleId)
-  scope: acrResource
-  properties: {
-    roleDefinitionId: acrPullRoleId
+module acrPullRole 'modules/acr-role-assignment.bicep' = {
+  name: 'acr-pull-role-assignment'
+  params: {
     principalId: acrPullIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleId
+    acrName: replace('${baseName}-acr', '-', '')
+    enabled: createRoleAssignments
   }
-}
-
-// Reference the ACR resource for scoping the role assignment
-resource acrResource 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
-  name: replace('${baseName}-acr', '-', '')
+  dependsOn: [acr]
 }
 
 // ========================================
@@ -92,7 +91,7 @@ module aiFoundry 'modules/ai-foundry.bicep' = {
 // ========================================
 module backendApp 'modules/container-app.bicep' = {
   name: 'backend-app-deployment'
-  dependsOn: [acrPullRoleAssignment]
+  dependsOn: [acrPullRole]
   params: {
     name: '${baseName}-backend'
     location: location
@@ -122,18 +121,14 @@ module backendApp 'modules/container-app.bicep' = {
 // ========================================
 // Role: Azure AI User for backend on AI Foundry (resource group scope)
 // ========================================
-resource backendAIRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, backendApp.name, azureAIUserRoleId)
-  properties: {
-    roleDefinitionId: azureAIUserRoleId
+module backendAIRole 'modules/role-assignment.bicep' = {
+  name: 'backend-ai-user-role-assignment'
+  params: {
     principalId: backendApp.outputs.principalId
-    principalType: 'ServicePrincipal'
+    roleDefinitionId: azureAIUserRoleId
+    description: 'Grants backend container app access to AI Foundry Agent Service'
+    enabled: createRoleAssignments
   }
-}
-
-// Reference the AI Foundry account for scoping the role assignment
-resource aiFoundryResource 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
-  name: '${baseName}-ai'
 }
 
 // ========================================
@@ -141,7 +136,7 @@ resource aiFoundryResource 'Microsoft.CognitiveServices/accounts@2025-06-01' exi
 // ========================================
 module frontendApp 'modules/container-app.bicep' = {
   name: 'frontend-app-deployment'
-  dependsOn: [acrPullRoleAssignment]
+  dependsOn: [acrPullRole]
   params: {
     name: '${baseName}-frontend'
     location: location

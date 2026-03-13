@@ -508,18 +508,20 @@ class TestManagedIdentity:
             "main.bicep should create a user-assigned managed identity"
 
     def test_has_acr_pull_role_assignment(self, main_bicep_content: str):
-        """Test that main.bicep assigns AcrPull role."""
+        """Test that main.bicep assigns AcrPull role via module."""
         assert "7f951dda-4ed3-4680-a7ca-43fe172d538d" in main_bicep_content, \
             "main.bicep should have AcrPull role definition ID"
-        assert "Microsoft.Authorization/roleAssignments" in main_bicep_content, \
-            "main.bicep should have role assignments"
+        assert "acr-role-assignment.bicep" in main_bicep_content, \
+            "main.bicep should use acr-role-assignment module"
 
     def test_has_azure_ai_user_role_assignment(
         self, main_bicep_content: str
     ):
-        """Test that backend gets Azure AI User role."""
+        """Test that backend gets Azure AI User role via module."""
         assert "53ca6127-db72-4b80-b1b0-d745d6d5456d" in main_bicep_content, \
             "main.bicep should have Azure AI User role ID"
+        assert "role-assignment.bicep" in main_bicep_content, \
+            "main.bicep should use role-assignment module"
 
     def test_no_registry_credentials(self, main_bicep_content: str):
         """Test that no registry credentials are passed to container apps."""
@@ -547,16 +549,127 @@ class TestManagedIdentity:
     def test_backend_depends_on_acr_role(self, main_bicep_content: str):
         """Test that backend depends on AcrPull role assignment."""
         assert re.search(
-            r"backend.*dependsOn.*acrPullRoleAssignment",
+            r"backend.*dependsOn.*acrPullRole",
             main_bicep_content, re.DOTALL
-        ), "Backend should depend on acrPullRoleAssignment"
+        ), "Backend should depend on acrPullRole"
 
-    def test_role_assignment_scoping(self, main_bicep_content: str):
-        """Test that role assignments are scoped to specific resources."""
-        assert "scope:" in main_bicep_content, \
-            "Role assignments should be scoped to specific resources"
-        assert "principalType: 'ServicePrincipal'" in main_bicep_content, \
-            "Role assignments should specify principalType"
+    def test_role_assignments_use_modules(self, main_bicep_content: str):
+        """Test that role assignments use reusable modules."""
+        assert "modules/role-assignment.bicep" in main_bicep_content, \
+            "Should use role-assignment module for RG-scoped roles"
+        assert "modules/acr-role-assignment.bicep" in main_bicep_content, \
+            "Should use acr-role-assignment module for ACR-scoped roles"
+
+    def test_role_assignments_have_enabled_param(
+        self, main_bicep_content: str
+    ):
+        """Test that role assignments can be conditionally disabled."""
+        assert "createRoleAssignments" in main_bicep_content, \
+            "main.bicep should have createRoleAssignments parameter"
+        assert re.search(
+            r"enabled:\s*createRoleAssignments",
+            main_bicep_content
+        ), "Role assignment modules should use createRoleAssignments"
+
+
+class TestRoleAssignmentModule:
+    """Tests for the reusable role-assignment.bicep module."""
+
+    @pytest.fixture
+    def module_path(self) -> Path:
+        """Path to role-assignment.bicep."""
+        return (
+            Path(__file__).parent.parent.parent
+            / "infra" / "modules" / "role-assignment.bicep"
+        )
+
+    @pytest.fixture
+    def module_content(self, module_path: Path) -> str:
+        """Read role-assignment.bicep content."""
+        return module_path.read_text()
+
+    def test_module_exists(self, module_path: Path):
+        """Test that role-assignment.bicep exists."""
+        assert module_path.exists()
+
+    def test_has_enabled_param(self, module_content: str):
+        """Test that module has an enabled condition parameter."""
+        assert re.search(
+            r"param\s+enabled\s+bool", module_content
+        ), "Module should have an 'enabled' bool parameter"
+
+    def test_conditional_creation(self, module_content: str):
+        """Test role assignment is conditional on enabled flag."""
+        assert "if (enabled" in module_content, \
+            "Role assignment should be conditional on enabled"
+
+    def test_empty_principal_guard(self, module_content: str):
+        """Test that empty principalId is guarded."""
+        assert "!empty(principalId)" in module_content, \
+            "Module should guard against empty principalId"
+
+    def test_deterministic_guid(self, module_content: str):
+        """Test role assignment uses deterministic GUID name."""
+        assert re.search(
+            r"guid\(.*principalId.*roleDefinitionId", module_content
+        ), "Role assignment name should use guid() with principal+role"
+
+    def test_has_principal_type(self, module_content: str):
+        """Test module sets principalType."""
+        assert "principalType" in module_content, \
+            "Module should set principalType property"
+
+    def test_outputs(self, module_content: str):
+        """Test module has expected outputs."""
+        assert "output name string" in module_content
+        assert "output created bool" in module_content
+
+
+class TestAcrRoleAssignmentModule:
+    """Tests for the ACR-scoped acr-role-assignment.bicep module."""
+
+    @pytest.fixture
+    def module_path(self) -> Path:
+        """Path to acr-role-assignment.bicep."""
+        return (
+            Path(__file__).parent.parent.parent
+            / "infra" / "modules" / "acr-role-assignment.bicep"
+        )
+
+    @pytest.fixture
+    def module_content(self, module_path: Path) -> str:
+        """Read acr-role-assignment.bicep content."""
+        return module_path.read_text()
+
+    def test_module_exists(self, module_path: Path):
+        """Test that acr-role-assignment.bicep exists."""
+        assert module_path.exists()
+
+    def test_has_enabled_param(self, module_content: str):
+        """Test that module has an enabled condition parameter."""
+        assert re.search(
+            r"param\s+enabled\s+bool", module_content
+        ), "Module should have an 'enabled' bool parameter"
+
+    def test_references_acr_existing(self, module_content: str):
+        """Test module references ACR with existing keyword."""
+        assert "existing" in module_content, \
+            "Module should reference ACR as existing resource"
+        assert "ContainerRegistry/registries" in module_content, \
+            "Module should reference ACR resource type"
+
+    def test_scoped_to_acr(self, module_content: str):
+        """Test role assignment is scoped to the ACR resource."""
+        assert "scope: acr" in module_content, \
+            "Role assignment should be scoped to ACR"
+
+    def test_conditional_creation(self, module_content: str):
+        """Test role assignment is conditional on enabled flag."""
+        assert "if (enabled" in module_content
+
+    def test_empty_principal_guard(self, module_content: str):
+        """Test that empty principalId is guarded."""
+        assert "!empty(principalId)" in module_content
 
 
 class TestParameterFiles:
