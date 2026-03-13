@@ -103,12 +103,66 @@ describe('CustomerForm', () => {
     expect(options).toEqual(['budget', 'moderate', 'luxury']);
   });
 
+  it('should default the end date to the selected start date when empty', () => {
+    const onSubmit = vi.fn();
+    render(<CustomerForm onSubmit={onSubmit} />);
+
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+
+    fireEvent.change(startDateInput, { target: { value: '2026-07-01' } });
+
+    expect(endDateInput.value).toBe('2026-07-01');
+  });
+
+  it('should update the end date when a new start date is after the current end date', () => {
+    const onSubmit = vi.fn();
+    render(<CustomerForm onSubmit={onSubmit} />);
+
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+
+    fireEvent.change(startDateInput, { target: { value: '2026-07-01' } });
+    fireEvent.change(endDateInput, { target: { value: '2026-07-05' } });
+    fireEvent.change(startDateInput, { target: { value: '2026-07-10' } });
+
+    expect(endDateInput.value).toBe('2026-07-10');
+  });
+
+  it('should preserve a later end date when the start date changes', () => {
+    const onSubmit = vi.fn();
+    render(<CustomerForm onSubmit={onSubmit} />);
+
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+
+    fireEvent.change(startDateInput, { target: { value: '2026-07-01' } });
+    fireEvent.change(endDateInput, { target: { value: '2026-07-15' } });
+    fireEvent.change(startDateInput, { target: { value: '2026-07-10' } });
+
+    expect(endDateInput.value).toBe('2026-07-15');
+  });
+
   it('should have party size minimum of 1', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
     const partySizeInput = screen.getByLabelText(/party size/i) as HTMLInputElement;
     expect(partySizeInput.min).toBe('1');
+  });
+
+  it('should set the end date minimum to the selected start date', () => {
+    const onSubmit = vi.fn();
+    render(<CustomerForm onSubmit={onSubmit} />);
+
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+
+    expect(endDateInput.min).toBe('');
+
+    fireEvent.change(startDateInput, { target: { value: '2026-07-01' } });
+
+    expect(endDateInput.min).toBe('2026-07-01');
   });
 
   it('should show validation error when dates are invalid', () => {
@@ -120,7 +174,11 @@ describe('CustomerForm', () => {
     setValue(/end date/i, '2026-07-01');
     setValue(/departure city/i, 'Boston');
 
-    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    const form = screen
+      .getByRole('button', { name: /build my itinerary/i })
+      .closest('form') as HTMLFormElement;
+
+    fireEvent.submit(form);
 
     expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();

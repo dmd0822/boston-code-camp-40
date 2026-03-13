@@ -91,7 +91,12 @@ export function CustomerForm({ onSubmit, disabled = false }: CustomerFormProps) 
   };
 
   const handleStartDateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setStartDate(e.target.value);
+    const newStartDate = e.target.value;
+
+    setStartDate(newStartDate);
+    if (newStartDate && (!endDate || endDate < newStartDate)) {
+      setEndDate(newStartDate);
+    }
     if (errors.travelDates) {
       setErrors({ ...errors, travelDates: undefined });
     }
@@ -182,6 +187,7 @@ export function CustomerForm({ onSubmit, disabled = false }: CustomerFormProps) 
           <input
             id="endDate"
             type="date"
+            min={startDate || undefined}
             className={`${styles.input} ${errors.travelDates ? styles.inputError : ''}`}
             value={endDate}
             onChange={handleEndDateChange}
