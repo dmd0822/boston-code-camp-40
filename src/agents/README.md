@@ -234,8 +234,7 @@ If you add a new agent, follow this pattern:
 
 - [docs/architecture.md](../../docs/architecture.md) — Agent design and
   orchestration
-- [.squad/decisions/inbox/batty-agent-framework-pattern.md](../../.squad/decisions/inbox/batty-agent-framework-pattern.md) —
-  Implementation pattern decisions
+- [.squad/decisions.md](../../.squad/decisions.md) — Team decision log and architectural context
 - [.squad/skills/web-search-grounding/SKILL.md](../../.squad/skills/web-search-grounding/SKILL.md) —
   Grounding pattern documentation
 - [../README.md](../README.md) — `src/` overview
