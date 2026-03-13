@@ -1,16 +1,23 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { useItinerary } from '../useItinerary';
-import { validCustomerProfile, validItineraryResponse } from '../../test/fixtures';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as itineraryApi from '../../api/itineraryApi';
+import { validCustomerProfile, validItineraryResponse } from '../../test/fixtures';
+import { useItinerary } from '../useItinerary';
 
-// Mock the API module
 vi.mock('../../api/itineraryApi');
 
 describe('useItinerary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  async function submitProfile(
+    submit: (profile: typeof validCustomerProfile) => Promise<void>
+  ) {
+    await act(async () => {
+      await submit(validCustomerProfile);
+    });
+  }
 
   it('should have initial state as idle', () => {
     const { result } = renderHook(() => useItinerary());
@@ -25,10 +32,8 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    // Submit the profile
-    await result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
-    // After completion, should be in success state
     await waitFor(() => {
       expect(result.current.state).toBe('success');
     });
@@ -44,10 +49,8 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    // Submit the profile
-    await result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
-    // After completion, should be in error state
     await waitFor(() => {
       expect(result.current.state).toBe('error');
     });
@@ -61,7 +64,7 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
     await waitFor(() => {
       expect(result.current.state).toBe('error');
@@ -76,18 +79,15 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    // Submit and wait for success
-    await result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
     await waitFor(() => {
       expect(result.current.state).toBe('success');
     });
 
-    // Reset
     act(() => {
       result.current.reset();
     });
 
-    // Check state after reset
     expect(result.current.state).toBe('idle');
     expect(result.current.itinerary).toBeNull();
     expect(result.current.error).toBeNull();
@@ -98,7 +98,7 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
     await waitFor(() => {
       expect(result.current.state).toBe('success');
@@ -115,7 +115,7 @@ describe('useItinerary', () => {
 
     const { result } = renderHook(() => useItinerary());
 
-    result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
     await waitFor(() => {
       expect(result.current.state).toBe('error');
@@ -125,29 +125,50 @@ describe('useItinerary', () => {
   });
 
   it('should clear error when submitting again', async () => {
-    // First submission fails
     vi.mocked(itineraryApi.createItinerary).mockRejectedValueOnce(new Error('First error'));
 
     const { result } = renderHook(() => useItinerary());
 
-    await result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
     await waitFor(() => {
       expect(result.current.state).toBe('error');
     });
 
     expect(result.current.error).toBe('First error');
 
-    // Second submission succeeds
     vi.mocked(itineraryApi.createItinerary).mockResolvedValueOnce(validItineraryResponse);
 
-    await result.current.submitProfile(validCustomerProfile);
+    await submitProfile(result.current.submitProfile);
 
-    // Should transition through loading to success, clearing error
     await waitFor(() => {
       expect(result.current.state).toBe('success');
     });
 
     expect(result.current.error).toBeNull();
     expect(result.current.itinerary).toEqual(validItineraryResponse);
+  });
+
+  it('retries the last submitted profile after an error', async () => {
+    vi.mocked(itineraryApi.createItinerary)
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce(validItineraryResponse);
+
+    const { result } = renderHook(() => useItinerary());
+
+    await submitProfile(result.current.submitProfile);
+    await waitFor(() => {
+      expect(result.current.state).toBe('error');
+    });
+
+    await act(async () => {
+      await result.current.retryLastSubmission();
+    });
+
+    await waitFor(() => {
+      expect(result.current.state).toBe('success');
+    });
+
+    expect(itineraryApi.createItinerary).toHaveBeenNthCalledWith(1, validCustomerProfile);
+    expect(itineraryApi.createItinerary).toHaveBeenNthCalledWith(2, validCustomerProfile);
   });
 });

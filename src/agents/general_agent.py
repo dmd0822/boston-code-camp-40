@@ -6,9 +6,7 @@ departure city. All recommendations are grounded in web search
 results.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 from agent_framework import Agent
@@ -16,9 +14,15 @@ from agent_framework_azure_ai import AzureAIClient
 from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
 
+from src.agents.agent_utils import (
+    load_system_prompt,
+    parse_json_payload,
+    run_agent_prompt,
+)
 from src.api.models.customer import CustomerProfile
 from src.api.models.itinerary import Destination
 from src.config.settings import Settings
+from src.exceptions import ExternalServiceError, ServiceConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +33,7 @@ def _load_system_prompt() -> str:
     Returns:
         System prompt as a string.
     """
-    prompt_path = (
-        Path(__file__).parent.parent.parent
-        / "data"
-        / "prompts"
-        / "general-agent"
-        / "system.md"
-    )
-    return prompt_path.read_text(encoding="utf-8")
+    return load_system_prompt("general-agent")
 
 
 def create_general_agent(settings: Settings) -> Agent:
@@ -53,7 +50,7 @@ def create_general_agent(settings: Settings) -> Agent:
         Configured Agent instance ready to recommend destinations.
 
     Raises:
-        ValueError: If Azure OpenAI endpoint/deployment missing.
+        ServiceConfigurationError: If Azure OpenAI config is invalid.
     """
     if not all(
         [
@@ -61,35 +58,39 @@ def create_general_agent(settings: Settings) -> Agent:
             settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
         ]
     ):
-        raise ValueError(
-            "Azure AI Foundry not configured. Set "
+        raise ServiceConfigurationError(
+            "Azure AI Foundry is not configured. Set "
             "AZURE_AI_PROJECT_ENDPOINT and "
             "AZURE_AI_MODEL_DEPLOYMENT_NAME."
         )
 
-    # Authenticate via Azure Identity (az login / managed identity)
     credential = DefaultAzureCredential()
 
-    client = AzureAIClient(
-        project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
-        credential=credential,
-        model_deployment_name=settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
-    )
+    try:
+        client = AzureAIClient(
+            project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
+            credential=credential,
+            model_deployment_name=(
+                settings.AZURE_AI_MODEL_DEPLOYMENT_NAME
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ServiceConfigurationError(
+            "Azure OpenAI client could not be initialized."
+        ) from exc
 
     instructions = _load_system_prompt()
-
-    agent = Agent(
+    return Agent(
         client=client,
         instructions=instructions,
         name="general-agent",
         description="Destination matching agent",
     )
 
-    return agent
-
 
 async def recommend_destinations(
-    profile: CustomerProfile, settings: Optional[Settings] = None
+    profile: CustomerProfile,
+    settings: Optional[Settings] = None,
 ) -> List[Destination]:
     """Recommend destinations based on customer profile.
 
@@ -99,20 +100,22 @@ async def recommend_destinations(
 
     Returns:
         List of 3-4 recommended destinations with rationale.
-        Returns empty list if insufficient web evidence.
 
     Raises:
-        ValueError: If Azure OpenAI credentials not configured.
+        ServiceConfigurationError: If Azure OpenAI config is missing.
+        ExternalServiceError: If the General Agent response is invalid.
     """
     if settings is None:
         from src.config.settings import get_settings
 
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except ValidationError as exc:
+            raise ServiceConfigurationError(
+                "Application settings could not be loaded."
+            ) from exc
 
-    # Create agent
     agent = create_general_agent(settings)
-
-    # Build user prompt from profile
     user_prompt = (
         f"Find destinations for this customer profile:\n\n"
         f"Interests: {', '.join(profile.interests)}\n"
@@ -126,52 +129,46 @@ async def recommend_destinations(
     if profile.notes:
         user_prompt += f"Notes: {profile.notes}\n"
 
-    logger.info(f"Requesting destinations from General Agent")
+    logger.info("Requesting destinations from General Agent.")
+    response_text = await run_agent_prompt(
+        agent=agent,
+        user_prompt=user_prompt,
+        agent_name="General Agent",
+        timeout_seconds=settings.AZURE_OPENAI_TIMEOUT_SECONDS,
+        logger=logger,
+    )
+    destinations_data = parse_json_payload(response_text, "General Agent")
 
-    try:
-        # Run agent
-        response = await agent.run(user_prompt)
-
-        # Parse response
-        response_text = response.text.strip()
-
-        # Try to extract JSON from markdown code blocks
-        if "```json" in response_text:
-            start = response_text.find("```json") + 7
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-
-        # Parse JSON
-        destinations_data = json.loads(response_text)
-
-        # Validate and convert to Destination objects
-        destinations: List[Destination] = []
-        for dest_data in destinations_data:
-            try:
-                destination = Destination(
-                    name=dest_data["name"],
-                    country=dest_data["country"],
-                    rationale=dest_data["rationale"],
-                )
-                destinations.append(destination)
-            except (KeyError, ValidationError) as e:
-                logger.warning(
-                    f"Skipping invalid destination data: {e}"
-                )
-
-        logger.info(
-            f"General Agent returned {len(destinations)} "
-            f"destinations"
+    if not isinstance(destinations_data, list):
+        logger.error(
+            "General Agent returned payload type %s.",
+            type(destinations_data).__name__,
         )
-        return destinations
+        raise ExternalServiceError(
+            "General Agent returned an invalid response format."
+        )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse agent response as JSON: {e}")
-        return []
-    except Exception as e:
-        logger.error(f"Error running General Agent: {e}")
-        return []
+    destinations: List[Destination] = []
+    for dest_data in destinations_data:
+        if not isinstance(dest_data, dict):
+            logger.warning(
+                "Skipping non-object destination payload: %r",
+                dest_data,
+            )
+            continue
+
+        try:
+            destination = Destination(
+                name=dest_data["name"],
+                country=dest_data["country"],
+                rationale=dest_data["rationale"],
+            )
+            destinations.append(destination)
+        except (KeyError, TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid destination data: %s", exc)
+
+    logger.info(
+        "General Agent returned %s destinations.",
+        len(destinations),
+    )
+    return destinations

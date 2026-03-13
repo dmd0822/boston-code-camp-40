@@ -185,23 +185,30 @@ class TestWebSearchTool:
             assert results == []
 
     @pytest.mark.asyncio
-    async def test_handles_http_error_responses(
-        self, bing_env: None
+    @pytest.mark.parametrize(
+        ("status_code", "error_message"),
+        [
+            (401, "Invalid subscription key"),
+            (429, "Rate limit exceeded"),
+        ],
+        ids=["invalid-api-key", "rate-limit"],
+    )
+    async def test_handles_bing_http_error_responses(
+        self,
+        bing_env: None,
+        status_code: int,
+        error_message: str,
     ) -> None:
-        """Verify search_web handles HTTP errors (429, 500, etc).
-
-        API rate limits and server errors should be caught and
-        handled gracefully.
-        """
+        """Verify handled Bing HTTP errors return empty results."""
         pytest.importorskip("src.agents.tools.web_search")
         from src.agents.tools.web_search import search_web
 
         with patch("httpx.AsyncClient") as MockAsyncClient:
             mock_response = MagicMock()
-            mock_response.status_code = 429
+            mock_response.status_code = status_code
             mock_response.raise_for_status = Mock(
                 side_effect=httpx.HTTPStatusError(
-                    "Rate limit exceeded",
+                    error_message,
                     request=Mock(),
                     response=mock_response,
                 )

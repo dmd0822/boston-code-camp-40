@@ -2,6 +2,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
+  animation: fadeInUp 0.7s ease-out both;
 }
 
 .header {
@@ -11,6 +12,7 @@
   background: linear-gradient(135deg, #2196f3, #1976d2);
   border-radius: 12px;
   color: white;
+  animation: fadeInUp 0.8s ease-out both;
 }
 
 .title {
@@ -36,8 +38,59 @@
   font-weight: 700;
 }
 
-.destinations {
-  /* Destinations are stacked vertically */
+.destinations > * {
+  opacity: 0;
+  animation: cardFadeIn 0.8s ease-out forwards;
+}
+
+.destinations > *:nth-child(1) {
+  animation-delay: 0.14s;
+}
+
+.destinations > *:nth-child(2) {
+  animation-delay: 0.22s;
+}
+
+.destinations > *:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.destinations > *:nth-child(4) {
+  animation-delay: 0.38s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container,
+  .header,
+  .destinations > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 768px) {

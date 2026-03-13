@@ -276,3 +276,58 @@
 - Azure deployment integration tests (deploy to test subscription)
 - Performance baseline tests (image build time, deployment time)
 - Security scanning (container image vulnerabilities, Bicep best practices)
+
+### 2026-03-13 — Phase 6.3 Backend Error Contract Coverage (Zhora)
+
+- API error responses now have a standard envelope: `detail` plus
+  `error.code`, `error.message`, and structured `error.details` via
+  `src/api/error_handlers.py`.
+- Route-layer timeout coverage should target typed exceptions such as
+  `ExternalServiceTimeoutError`; generic runtime failures are wrapped
+  into `itinerary_generation_error` responses in
+  `src/api/routes/itinerary.py`.
+- Orchestrator hardening now expects General Agent failures to bubble
+  as typed service errors, while single specialist failures degrade to
+  partial results and all-specialist failure becomes an itinerary-level
+  error.
+- Shared agent error tests live in
+  `tests/unit/agents/test_agent_error_handling.py` and assert typed
+  `ExternalServiceError` handling for Azure OpenAI failures, Bing/tool
+  failures, and malformed LLM payloads.
+- Key test files for Phase 6.1 are
+  `tests/integration/test_api_routes.py`,
+  `tests/unit/orchestrator/test_travel_orchestrator.py`,
+  `tests/unit/agents/test_agent_error_handling.py`, and
+  `tests/unit/tools/test_web_search.py`.
+- Dave's preference for this phase was contract-first testing: define
+  structured backend error behavior in tests even while Batty hardens
+  the implementation in parallel.
+
+**Phase 6 Complete Summary:**
+
+Phase 6 comprehensive error handling and UX polish complete across all three agents.
+
+**Phase 6.1 (Batty):** 
+- Structured error responses across API routes, agents, orchestrator
+- Graceful degradation when agents fail
+- Timeout handling for Azure OpenAI and Bing Search
+- Input validation on all endpoints
+- Comprehensive logging throughout
+
+**Phase 6.2 (Pris):**
+- Multi-step progress indicator reflecting backend phases
+- CSS-only loading animations with motion preferences
+- Skeleton loaders for itinerary preview
+- Polished error states with retry capability
+- Fade/slide transitions on content load
+- Full accessibility (aria-live, semantic HTML)
+
+**Phase 6.3 (Zhora):**
+- API error response tests (400, 401, 403, 404, 500)
+- Orchestrator graceful degradation tests
+- Agent failure and timeout handling tests
+- Web search error scenario tests
+- Integration error flow tests
+- 325 total tests (262 backend + 63 frontend), all passing
+
+**Result:** System hardened, tested, and demo-ready. 262 backend tests passing, 63 frontend tests passing, zero failures.

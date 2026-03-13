@@ -11,6 +11,7 @@ Orchestrator is mocked to avoid real agent execution.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -37,6 +38,33 @@ def client() -> TestClient:
     """Return a TestClient for the FastAPI app."""
     app = create_app()
     return TestClient(app)
+
+
+@pytest.fixture()
+def error_client() -> TestClient:
+    """Return a TestClient that captures server errors as responses."""
+    app = create_app()
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _assert_error_response(
+    response: Any,
+    expected_status: int,
+    expected_code: str,
+) -> Dict[str, Any]:
+    """Assert the response uses the standard API error envelope."""
+    assert response.status_code == expected_status
+    content_type = response.headers.get("content-type", "")
+    assert content_type.startswith("application/json")
+
+    data = response.json()
+    assert isinstance(data["detail"], str)
+    assert data["detail"]
+    assert data["detail"] == data["error"]["message"]
+    assert data["error"]["code"] == expected_code
+    assert isinstance(data["error"]["details"], list)
+    assert "Traceback" not in json.dumps(data)
+    return data
 
 
 @pytest.fixture()
@@ -138,11 +166,7 @@ class TestItineraryEndpoint:
     def test_post_itinerary_returns_422_on_invalid_input(
         self, client: TestClient
     ) -> None:
-        """Verify POST /api/itinerary returns 422 on invalid input.
-
-        Missing required fields should trigger Pydantic
-        validation error.
-        """
+        """Verify invalid customer input returns structured 422 JSON."""
         invalid_profile = {
             "interests": ["history"],
             # Missing budget, travel_dates, party_size,
@@ -153,36 +177,99 @@ class TestItineraryEndpoint:
             "/api/itinerary", json=invalid_profile
         )
 
-        assert response.status_code == 422
-        data = response.json()
-        assert "detail" in data
+        data = _assert_error_response(
+            response,
+            422,
+            "validation_error",
+        )
+        assert data["error"]["details"]
+        first_error = data["error"]["details"][0]
+        assert {"field", "message", "type"}.issubset(first_error)
 
-    def test_post_itinerary_handles_orchestrator_error(
+    def test_post_itinerary_rejects_inverted_date_ranges(
+        self, client: TestClient
+    ) -> None:
+        """Verify end dates earlier than start dates are rejected."""
+        invalid_profile = {
+            "interests": ["history"],
+            "budget": "moderate",
+            "travel_dates": {
+                "start": "2026-06-25",
+                "end": "2026-06-15",
+            },
+            "party_size": 2,
+            "departure_city": "Boston",
+        }
+
+        response = client.post(
+            "/api/itinerary", json=invalid_profile
+        )
+
+        data = _assert_error_response(
+            response,
+            422,
+            "validation_error",
+        )
+        detail_messages = [
+            item["message"] for item in data["error"]["details"]
+        ]
+        assert any("on or after" in message for message in detail_messages)
+
+    def test_post_itinerary_returns_structured_500_on_backend_error(
         self,
-        client: TestClient,
+        error_client: TestClient,
         sample_customer_profile: Dict[str, Any],
     ) -> None:
-        """Verify orchestrator error propagates as 500 error.
-
-        If orchestrator raises an exception, FastAPI converts it
-        to a 500 Internal Server Error. Test verifies the error
-        is raised (not silently swallowed).
-        """
+        """Verify backend failures return safe 500 JSON, not traces."""
         with patch(
             "src.api.routes.itinerary.TravelOrchestrator"
         ) as MockOrch:
             mock_instance = MagicMock()
             mock_instance.generate_itinerary = AsyncMock(
-                side_effect=Exception("Orchestrator error")
+                side_effect=RuntimeError("database connection lost")
             )
             MockOrch.return_value = mock_instance
 
-            # FastAPI TestClient will raise the exception
-            # in test mode rather than returning 500
-            with pytest.raises(Exception, match="Orchestrator error"):
-                response = client.post(
-                    "/api/itinerary", json=sample_customer_profile
+            response = error_client.post(
+                "/api/itinerary", json=sample_customer_profile
+            )
+
+        data = _assert_error_response(
+            response,
+            500,
+            "itinerary_generation_error",
+        )
+        assert "database connection lost" not in json.dumps(data)
+
+    def test_post_itinerary_returns_timeout_error_response(
+        self,
+        error_client: TestClient,
+        sample_customer_profile: Dict[str, Any],
+    ) -> None:
+        """Verify backend timeouts return structured timeout details."""
+        from src.exceptions import ExternalServiceTimeoutError
+
+        with patch(
+            "src.api.routes.itinerary.TravelOrchestrator"
+        ) as MockOrch:
+            mock_instance = MagicMock()
+            mock_instance.generate_itinerary = AsyncMock(
+                side_effect=ExternalServiceTimeoutError(
+                    "The itinerary request timed out."
                 )
+            )
+            MockOrch.return_value = mock_instance
+
+            response = error_client.post(
+                "/api/itinerary", json=sample_customer_profile
+            )
+
+        data = _assert_error_response(
+            response,
+            504,
+            "external_service_timeout",
+        )
+        assert "timed out" in data["detail"].lower()
 
     def test_post_itinerary_response_structure(
         self,

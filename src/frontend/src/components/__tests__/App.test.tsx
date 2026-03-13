@@ -1,14 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from '../../App';
 import * as useItineraryModule from '../../hooks/useItinerary';
 import { validItineraryResponse } from '../../test/fixtures';
 
-// Mock the useItinerary hook
 vi.mock('../../hooks/useItinerary');
 
 describe('App', () => {
   const mockSubmitProfile = vi.fn();
+  const mockRetryLastSubmission = vi.fn();
   const mockReset = vi.fn();
 
   beforeEach(() => {
@@ -21,6 +21,7 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
@@ -38,6 +39,7 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
@@ -54,12 +56,13 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
     render(<App />);
 
-    expect(screen.getByText('Building your itinerary...')).toBeInTheDocument();
+    expect(screen.getByText('Your itinerary is taking shape')).toBeInTheDocument();
     expect(screen.queryByLabelText(/interests/i)).not.toBeInTheDocument();
   });
 
@@ -69,6 +72,7 @@ describe('App', () => {
       itinerary: validItineraryResponse,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
@@ -88,14 +92,19 @@ describe('App', () => {
       itinerary: null,
       error: errorMessage,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
     render(<App />);
 
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(
+      screen.getByText('We could not reach the itinerary service')
+    ).toBeInTheDocument();
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /retry itinerary/i })
+    ).toBeInTheDocument();
   });
 
   it('should render footer', () => {
@@ -104,6 +113,7 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
@@ -118,12 +128,12 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
     render(<App />);
 
-    // The form exists and should receive the submitProfile callback
     expect(screen.getByRole('button', { name: /build my itinerary/i })).toBeInTheDocument();
   });
 
@@ -133,6 +143,7 @@ describe('App', () => {
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
 
@@ -144,34 +155,34 @@ describe('App', () => {
   it('should handle state transitions correctly', () => {
     const { rerender } = render(<App />);
 
-    // Start with idle
     vi.mocked(useItineraryModule.useItinerary).mockReturnValue({
       state: 'idle',
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
     rerender(<App />);
     expect(screen.getByText('Plan Your Trip')).toBeInTheDocument();
 
-    // Transition to loading
     vi.mocked(useItineraryModule.useItinerary).mockReturnValue({
       state: 'loading',
       itinerary: null,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
     rerender(<App />);
-    expect(screen.getByText('Building your itinerary...')).toBeInTheDocument();
+    expect(screen.getByText('Your itinerary is taking shape')).toBeInTheDocument();
 
-    // Transition to success
     vi.mocked(useItineraryModule.useItinerary).mockReturnValue({
       state: 'success',
       itinerary: validItineraryResponse,
       error: null,
       submitProfile: mockSubmitProfile,
+      retryLastSubmission: mockRetryLastSubmission,
       reset: mockReset,
     });
     rerender(<App />);

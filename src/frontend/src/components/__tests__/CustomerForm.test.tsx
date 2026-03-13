@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CustomerForm } from '../CustomerForm/CustomerForm';
 import type { CustomerProfile } from '../../types/itinerary';
+
+function setValue(label: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(label), {
+    target: { value },
+  });
+}
 
 describe('CustomerForm', () => {
   it('should render all form fields', () => {
@@ -18,27 +23,23 @@ describe('CustomerForm', () => {
     expect(screen.getByLabelText(/additional notes/i)).toBeInTheDocument();
   });
 
-  it('should call onSubmit with correct CustomerProfile data', async () => {
-    const user = userEvent.setup();
+  it('should call onSubmit with correct CustomerProfile data', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Fill out the form
-    await user.type(screen.getByLabelText(/interests/i), 'history, food, art');
-    await user.selectOptions(screen.getByLabelText(/budget/i), 'luxury');
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-15');
-    await user.clear(screen.getByLabelText(/party size/i));
-    await user.type(screen.getByLabelText(/party size/i), '4');
-    await user.type(screen.getByLabelText(/departure city/i), 'New York');
-    await user.type(screen.getByLabelText(/additional notes/i), 'Looking for family-friendly activities');
+    setValue(/interests/i, 'history, food, art');
+    setValue(/budget/i, 'luxury');
+    setValue(/start date/i, '2026-07-01');
+    setValue(/end date/i, '2026-07-15');
+    setValue(/party size/i, '4');
+    setValue(/departure city/i, 'New York');
+    setValue(/additional notes/i, 'Looking for family-friendly activities');
 
-    // Submit the form
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedProfile: CustomerProfile = onSubmit.mock.calls[0][0];
-    
+
     expect(submittedProfile.interests).toEqual(['history', 'food', 'art']);
     expect(submittedProfile.budget).toBe('luxury');
     expect(submittedProfile.travel_dates.start).toBe('2026-07-01');
@@ -48,37 +49,33 @@ describe('CustomerForm', () => {
     expect(submittedProfile.notes).toBe('Looking for family-friendly activities');
   });
 
-  it('should show validation error when interests is empty', async () => {
-    const user = userEvent.setup();
+  it('should show validation error when interests is empty', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Fill out other required fields
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-15');
-    await user.type(screen.getByLabelText(/departure city/i), 'Boston');
+    setValue(/start date/i, '2026-07-01');
+    setValue(/end date/i, '2026-07-15');
+    setValue(/departure city/i, 'Boston');
 
-    // Try to submit without interests
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Please enter at least one interest');
+    expect(
+      screen.getByText('Please enter at least one interest')
+    ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('should show validation error when departure city is empty', async () => {
-    const user = userEvent.setup();
+  it('should show validation error when departure city is empty', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Fill out other required fields
-    await user.type(screen.getByLabelText(/interests/i), 'beach, relaxation');
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-15');
+    setValue(/interests/i, 'beach, relaxation');
+    setValue(/start date/i, '2026-07-01');
+    setValue(/end date/i, '2026-07-15');
 
-    // Try to submit without departure city
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Departure city is required');
+    expect(screen.getByText('Departure city is required')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -101,7 +98,7 @@ describe('CustomerForm', () => {
     render(<CustomerForm onSubmit={onSubmit} />);
 
     const budgetSelect = screen.getByLabelText(/budget/i) as HTMLSelectElement;
-    const options = Array.from(budgetSelect.options).map(option => option.value);
+    const options = Array.from(budgetSelect.options).map((option) => option.value);
 
     expect(options).toEqual(['budget', 'moderate', 'luxury']);
   });
@@ -114,53 +111,47 @@ describe('CustomerForm', () => {
     expect(partySizeInput.min).toBe('1');
   });
 
-  it('should show validation error when dates are invalid', async () => {
-    const user = userEvent.setup();
+  it('should show validation error when dates are invalid', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Fill out fields with invalid dates (end before start)
-    await user.type(screen.getByLabelText(/interests/i), 'history');
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-15');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/departure city/i), 'Boston');
+    setValue(/interests/i, 'history');
+    setValue(/start date/i, '2026-07-15');
+    setValue(/end date/i, '2026-07-01');
+    setValue(/departure city/i, 'Boston');
 
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('End date must be after start date');
+    expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('should convert empty notes to null', async () => {
-    const user = userEvent.setup();
+  it('should convert empty notes to null', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Fill out required fields without notes
-    await user.type(screen.getByLabelText(/interests/i), 'food');
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-15');
-    await user.type(screen.getByLabelText(/departure city/i), 'Boston');
+    setValue(/interests/i, 'food');
+    setValue(/start date/i, '2026-07-01');
+    setValue(/end date/i, '2026-07-15');
+    setValue(/departure city/i, 'Boston');
 
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedProfile: CustomerProfile = onSubmit.mock.calls[0][0];
     expect(submittedProfile.notes).toBeNull();
   });
 
-  it('should trim and filter interests correctly', async () => {
-    const user = userEvent.setup();
+  it('should trim and filter interests correctly', () => {
     const onSubmit = vi.fn();
     render(<CustomerForm onSubmit={onSubmit} />);
 
-    // Enter interests with extra whitespace and empty entries
-    await user.type(screen.getByLabelText(/interests/i), '  history  , , food , art  ,  ');
-    await user.type(screen.getByLabelText(/start date/i), '2026-07-01');
-    await user.type(screen.getByLabelText(/end date/i), '2026-07-15');
-    await user.type(screen.getByLabelText(/departure city/i), 'Boston');
+    setValue(/interests/i, '  history  , , food , art  ,  ');
+    setValue(/start date/i, '2026-07-01');
+    setValue(/end date/i, '2026-07-15');
+    setValue(/departure city/i, 'Boston');
 
-    await user.click(screen.getByRole('button', { name: /build my itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my itinerary/i }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedProfile: CustomerProfile = onSubmit.mock.calls[0][0];

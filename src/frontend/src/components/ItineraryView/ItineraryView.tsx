@@ -14,7 +14,12 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
   const formattedDate = new Date(itinerary.generated_at).toLocaleString();
 
   return (
-    <div className={styles.container}>
+    <section
+      className={styles.container}
+      role="region"
+      aria-live="polite"
+      aria-label="Generated itinerary"
+    >
       <header className={styles.header}>
         <h1 className={styles.title}>Your Perfect Itinerary</h1>
         <div className={styles.meta}>
@@ -31,6 +36,6 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
           <DestinationCard key={index} destination={destination} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }

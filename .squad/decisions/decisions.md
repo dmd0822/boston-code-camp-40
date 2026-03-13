@@ -318,6 +318,73 @@ Option 1 is preferred. If partial results need to omit URLs, use a separate "dra
 
 ---
 
+---
+
+## 2026-03-13 — Phase 6.1 Backend Error Handling Hardening
+
+**Author:** Batty | **Status:** Implemented
+
+Adopted a shared backend exception hierarchy in `src/exceptions.py` and mapped it to one structured JSON error envelope in `src/api/error_handlers.py`.
+
+**Rules:**
+- API routes return one error shape: `{"error": {...}, "detail": "..."}`.
+- Request validation failures return HTTP 422 with structured field details.
+- Azure OpenAI timeouts return HTTP 504 via `ExternalServiceTimeoutError`.
+- Upstream Azure/Bing failures return safe 5xx responses without stack traces in the body.
+- Specialist agent failures degrade to partial itinerary data; all specialists failing raises `ItineraryGenerationError`.
+- General Agent failures propagate to the API layer instead of silent empty itinerary.
+
+**Impacted Files:**
+- `src/exceptions.py`
+- `src/api/error_handlers.py`
+- `src/api/routes/itinerary.py`
+- `src/orchestrator/travel_orchestrator.py`
+- `src/agents/agent_utils.py`
+- `src/agents/tools/web_search.py`
+
+---
+
+## 2026-03-13 — Phase 6.2 Loading UX Polish
+
+**Author:** Pris | **Status:** Implemented
+
+Frontend loading experience enhanced with deterministic staged progress model and CSS-only animations.
+
+**Decision:**
+- Represent backend progress with staged frontend model (destination matching → enrichment → finalizing)
+- Keep implementation lightweight: CSS-only animation, skeleton placeholders, `prefers-reduced-motion` support
+- Retry replays last submitted `CustomerProfile` from `useItinerary`
+
+**Why This Works:**
+- Users get meaningful progress feedback before live streaming exists
+- UI reflects actual orchestration shape instead of generic spinner
+- Retry preserves momentum during demos
+
+**Files Modified:**
+- `src/frontend/src/components/LoadingState/`
+- `src/frontend/src/components/ErrorState/`
+- `src/frontend/src/hooks/useItinerary.ts`
+- `src/frontend/src/components/ItineraryView/`
+
+---
+
+## 2026-03-13 — Phase 6.3 Error Test Coverage Contract
+
+**Author:** Zhora | **Status:** Implemented
+
+Typed backend exceptions plus standard API error envelope as test contract.
+
+**Contract in Tests:**
+- API errors return JSON: `detail`, `error.code`, `error.message`, `error.details[]`
+- Validation failures → `validation_error` with structured field-level details
+- Route-level failures → `itinerary_generation_error`
+- Timeout paths → `external_service_timeout`
+- Orchestrator distinguishes: single specialist failure (partial results) vs General Agent failure (service error) vs all specialist failures (generation error)
+
+**Impact:** Tests provide concrete backend error contract safe for frontend consumption, avoid stack trace leakage, align route/orchestrator/agent/web-search error strategy.
+
+---
+
 ## How to Use This Document
 
 - **Adding decisions:** File them in `.squad/decisions/inbox/` (named `{author}-{topic}.md`). Scribe merges to this file after each phase.

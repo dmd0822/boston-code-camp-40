@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createItinerary } from '../api/itineraryApi';
 import type { CustomerProfile, ItineraryResponse } from '../types/itinerary';
 
@@ -9,19 +9,22 @@ interface UseItineraryReturn {
   itinerary: ItineraryResponse | null;
   error: string | null;
   submitProfile: (profile: CustomerProfile) => Promise<void>;
+  retryLastSubmission: () => Promise<void>;
   reset: () => void;
 }
 
 /**
  * Custom hook for managing itinerary creation workflow.
- * Handles state transitions: idle -> loading -> success/error
+ * Handles state transitions: idle -> loading -> success/error.
  */
 export function useItinerary(): UseItineraryReturn {
   const [state, setState] = useState<State>('idle');
   const [itinerary, setItinerary] = useState<ItineraryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lastSubmittedProfileRef = useRef<CustomerProfile | null>(null);
 
-  const submitProfile = useCallback(async (profile: CustomerProfile) => {
+  const runSubmission = useCallback(async (profile: CustomerProfile) => {
+    lastSubmittedProfileRef.current = profile;
     setState('loading');
     setError(null);
     setItinerary(null);
@@ -31,23 +34,42 @@ export function useItinerary(): UseItineraryReturn {
       setItinerary(response);
       setState('success');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      const errorMessage = err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred';
       setError(errorMessage);
       setState('error');
     }
   }, []);
 
+  const submitProfile = useCallback(async (profile: CustomerProfile) => {
+    await runSubmission(profile);
+  }, [runSubmission]);
+
   const reset = useCallback(() => {
+    lastSubmittedProfileRef.current = null;
     setState('idle');
     setItinerary(null);
     setError(null);
   }, []);
+
+  const retryLastSubmission = useCallback(async () => {
+    const lastSubmittedProfile = lastSubmittedProfileRef.current;
+
+    if (!lastSubmittedProfile) {
+      reset();
+      return;
+    }
+
+    await runSubmission(lastSubmittedProfile);
+  }, [reset, runSubmission]);
 
   return {
     state,
     itinerary,
     error,
     submitProfile,
+    retryLastSubmission,
     reset,
   };
 }

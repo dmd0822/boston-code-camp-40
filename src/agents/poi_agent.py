@@ -5,9 +5,7 @@ landmarks, or experiences for a destination. All recommendations
 are grounded in web search results.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 from agent_framework import Agent
@@ -15,9 +13,15 @@ from agent_framework_azure_ai import AzureAIClient
 from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
 
+from src.agents.agent_utils import (
+    load_system_prompt,
+    parse_json_payload,
+    run_agent_prompt,
+)
 from src.api.models.customer import TravelDates
 from src.api.models.itinerary import PointOfInterest
 from src.config.settings import Settings
+from src.exceptions import ExternalServiceError, ServiceConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +32,7 @@ def _load_system_prompt() -> str:
     Returns:
         System prompt as a string.
     """
-    prompt_path = (
-        Path(__file__).parent.parent.parent
-        / "data"
-        / "prompts"
-        / "poi-agent"
-        / "system.md"
-    )
-    return prompt_path.read_text(encoding="utf-8")
+    return load_system_prompt("poi-agent")
 
 
 def create_poi_agent(settings: Settings) -> Agent:
@@ -52,7 +49,7 @@ def create_poi_agent(settings: Settings) -> Agent:
         Configured Agent instance ready to find POIs.
 
     Raises:
-        ValueError: If Azure OpenAI endpoint/deployment missing.
+        ServiceConfigurationError: If Azure OpenAI config is invalid.
     """
     if not all(
         [
@@ -60,30 +57,34 @@ def create_poi_agent(settings: Settings) -> Agent:
             settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
         ]
     ):
-        raise ValueError(
-            "Azure AI Foundry not configured. Set "
+        raise ServiceConfigurationError(
+            "Azure AI Foundry is not configured. Set "
             "AZURE_AI_PROJECT_ENDPOINT and "
             "AZURE_AI_MODEL_DEPLOYMENT_NAME."
         )
 
     credential = DefaultAzureCredential()
 
-    client = AzureAIClient(
-        project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
-        credential=credential,
-        model_deployment_name=settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
-    )
+    try:
+        client = AzureAIClient(
+            project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
+            credential=credential,
+            model_deployment_name=(
+                settings.AZURE_AI_MODEL_DEPLOYMENT_NAME
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ServiceConfigurationError(
+            "Azure OpenAI client could not be initialized."
+        ) from exc
 
     instructions = _load_system_prompt()
-
-    agent = Agent(
+    return Agent(
         client=client,
         instructions=instructions,
         name="poi-agent",
         description="Points of interest discovery agent",
     )
-
-    return agent
 
 
 async def find_points_of_interest(
@@ -98,25 +99,26 @@ async def find_points_of_interest(
         destination_name: Name of the destination city/region.
         country: Country of the destination.
         travel_dates: Travel date range.
-        settings: Application settings (optional, will load if
-            None).
+        settings: Application settings (optional, will load if None).
 
     Returns:
-        List of 5-8 POIs. Returns empty list if insufficient web
-        evidence.
+        List of 5-8 POIs.
 
     Raises:
-        ValueError: If Azure OpenAI credentials not configured.
+        ServiceConfigurationError: If Azure OpenAI config is missing.
+        ExternalServiceError: If the POI Agent response is invalid.
     """
     if settings is None:
         from src.config.settings import get_settings
 
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except ValidationError as exc:
+            raise ServiceConfigurationError(
+                "Application settings could not be loaded."
+            ) from exc
 
-    # Create agent
     agent = create_poi_agent(settings)
-
-    # Build user prompt
     user_prompt = (
         f"Find points of interest for this destination:\n\n"
         f"Destination: {destination_name}, {country}\n"
@@ -126,48 +128,42 @@ async def find_points_of_interest(
         f"nature, culture, and shopping."
     )
 
-    logger.info(
-        f"Requesting POIs for {destination_name} from POI Agent"
+    logger.info("Requesting POIs for %s from POI Agent.", destination_name)
+    response_text = await run_agent_prompt(
+        agent=agent,
+        user_prompt=user_prompt,
+        agent_name="POI Agent",
+        timeout_seconds=settings.AZURE_OPENAI_TIMEOUT_SECONDS,
+        logger=logger,
     )
+    pois_data = parse_json_payload(response_text, "POI Agent")
 
-    try:
-        # Run agent
-        response = await agent.run(user_prompt)
-
-        # Parse response
-        response_text = response.text.strip()
-
-        # Try to extract JSON from markdown code blocks
-        if "```json" in response_text:
-            start = response_text.find("```json") + 7
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-
-        # Parse JSON
-        pois_data = json.loads(response_text)
-
-        # Validate and convert to PointOfInterest objects
-        pois: List[PointOfInterest] = []
-        for poi_data in pois_data:
-            try:
-                poi = PointOfInterest(**poi_data)
-                pois.append(poi)
-            except (KeyError, ValidationError) as e:
-                logger.warning(f"Skipping invalid POI data: {e}")
-
-        logger.info(
-            f"POI Agent returned {len(pois)} POIs for "
-            f"{destination_name}"
+    if not isinstance(pois_data, list):
+        logger.error(
+            "POI Agent returned payload type %s.",
+            type(pois_data).__name__,
         )
-        return pois
+        raise ExternalServiceError(
+            "POI Agent returned an invalid response format."
+        )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse agent response as JSON: {e}")
-        return []
-    except Exception as e:
-        logger.error(f"Error running POI Agent: {e}")
-        return []
+    pois: List[PointOfInterest] = []
+    for poi_data in pois_data:
+        if not isinstance(poi_data, dict):
+            logger.warning(
+                "Skipping non-object POI payload: %r",
+                poi_data,
+            )
+            continue
+
+        try:
+            pois.append(PointOfInterest(**poi_data))
+        except (TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid POI data: %s", exc)
+
+    logger.info(
+        "POI Agent returned %s POIs for %s.",
+        len(pois),
+        destination_name,
+    )
+    return pois

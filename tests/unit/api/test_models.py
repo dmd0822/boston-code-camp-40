@@ -86,6 +86,11 @@ class TestTravelDates:
         td = TravelDates(start="2026-06-15", end="2026-06-15")
         assert td.start == td.end
 
+    def test_end_before_start_is_rejected(self) -> None:
+        """Trips cannot end before they begin."""
+        with pytest.raises(ValidationError):
+            TravelDates(start="2026-06-25", end="2026-06-15")
+
 
 # ==================================================================
 # CustomerProfile

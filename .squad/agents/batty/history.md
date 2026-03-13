@@ -221,3 +221,67 @@ Weather).
 
 **Next phase:** Phase 4 integration testing (Zhora) or Phase 5 
 containerization (Gaff).
+
+### 2026-03-13 — Phase 6.1 Error Handling Hardening (Batty)
+
+**Architecture decisions:**
+- Added a shared backend exception hierarchy in `src/exceptions.py` 
+  so routes, agents, and the orchestrator can map failures to stable 
+  HTTP statuses without duplicating error translation logic.
+- Standardized API failures through `src/api/error_handlers.py` and 
+  `src/api/app.py`, using one JSON envelope for validation, timeout, 
+  configuration, and unexpected server errors.
+- Tightened orchestration semantics in 
+  `src/orchestrator/travel_orchestrator.py`: specialist failures still 
+  degrade to partial results, but all-specialist failure now raises a 
+  hard error and General Agent failures propagate to the API layer.
+
+**Patterns established:**
+- Use `run_agent_prompt()` and `parse_json_payload()` from 
+  `src/agents/agent_utils.py` to enforce Azure OpenAI timeouts, empty 
+  response checks, markdown fence stripping, and JSON parsing.
+- Use `AgentCallResult` in the orchestrator to distinguish a genuine 
+  empty result from a fallback caused by agent failure.
+- Keep Bing Search resilient in `src/agents/tools/web_search.py` by 
+  loading fresh env-backed settings per call, applying explicit 
+  `httpx.Timeout`, and returning `[]` on timeout, HTTP, request, or 
+  JSON parsing errors.
+- Put semantic request validation in Pydantic models: 
+  `TravelDates` now rejects end-before-start, and `CustomerProfile` 
+  trims/validates interests, departure city, and notes.
+
+**User preferences learned:**
+- Dave explicitly wanted robust backend hardening without changing the 
+  frontend contract, plus verification with 
+  `python -m pytest tests/ -x -q`.
+- Backend errors should be explainable in human terms, logged for 
+  debugging, and returned as safe JSON without stack traces.
+
+**Key file paths:**
+- `src/exceptions.py` — shared backend exception types
+- `src/api/error_handlers.py` — structured JSON error envelope
+- `src/api/routes/itinerary.py` — route-level error translation
+- `src/api/models/customer.py` — itinerary input validation rules
+- `src/agents/agent_utils.py` — shared Azure OpenAI timeout and 
+  response parsing helpers
+- `src/agents/tools/web_search.py` — Bing Search timeout handling
+- `tests/integration/test_api_routes.py` — structured API error tests
+- `tests/unit/api/test_models.py` — travel date order validation test
+
+**Phase 6 Summary:**
+
+Phase 6 completed with cross-team effort achieving 262 backend tests 
+passing (4 skipped), 63 frontend tests passing, zero failures.
+
+- **Phase 6.1 (Batty):** Error handling hardening across API routes, 
+  agents, orchestrator, and web search tool. Structured JSON error 
+  responses, graceful degradation, timeout handling, input validation, 
+  comprehensive logging.
+- **Phase 6.2 (Pris):** Loading UX polish with multi-step progress 
+  indicator, CSS-only animations, skeleton loaders, error states, 
+  transitions, full accessibility. Conference-demo ready.
+- **Phase 6.3 (Zhora):** Error handling test coverage for API errors, 
+  orchestrator degradation, agent failures, web search errors. 
+  Comprehensive error scenario testing.
+
+**Ready for Phase 7:** Performance optimization and monitoring.

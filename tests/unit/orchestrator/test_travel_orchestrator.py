@@ -11,6 +11,7 @@ Search API calls.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, patch
@@ -27,6 +28,11 @@ from src.api.models.itinerary import (
     WeatherForecast,
 )
 from src.config.settings import Settings
+from src.exceptions import (
+    ExternalServiceError,
+    ExternalServiceTimeoutError,
+    ItineraryGenerationError,
+)
 
 
 # ------------------------------------------------------------------
@@ -350,7 +356,7 @@ class TestTravelOrchestrator:
                             mock_general_destinations
                         )
                         # POI agent fails
-                        mock_poi.side_effect = Exception(
+                        mock_poi.side_effect = ExternalServiceError(
                             "POI agent error"
                         )
                         mock_event.return_value = mock_events
@@ -375,16 +381,12 @@ class TestTravelOrchestrator:
                             # present
 
     @pytest.mark.asyncio
-    async def test_general_agent_failure_returns_empty_itinerary(
+    async def test_general_agent_failure_raises_external_service_error(
         self,
         sample_customer_profile: Dict[str, Any],
         orchestrator_settings: Settings,
     ) -> None:
-        """Verify General Agent failure returns empty destinations.
-
-        If General Agent fails, orchestrator should return empty
-        destinations list (not crash).
-        """
+        """Verify General Agent failures do not masquerade as success."""
         pytest.importorskip("src.orchestrator.travel_orchestrator")
         from src.orchestrator.travel_orchestrator import (
             TravelOrchestrator,
@@ -397,20 +399,16 @@ class TestTravelOrchestrator:
             "recommend_destinations",
             new_callable=AsyncMock,
         ) as mock_general:
-            # General Agent fails
-            mock_general.side_effect = Exception(
+            mock_general.side_effect = ExternalServiceError(
                 "General Agent error"
             )
 
             orchestrator = TravelOrchestrator(
                 orchestrator_settings
             )
-            result = await orchestrator.generate_itinerary(profile)
 
-            # Assert: Empty result, not crash
-            assert isinstance(result, ItineraryResponse)
-            assert result.destinations == []
-            assert isinstance(result.generated_at, datetime)
+            with pytest.raises(ExternalServiceError):
+                await orchestrator.generate_itinerary(profile)
 
     @pytest.mark.asyncio
     async def test_returns_valid_itinerary_response(
@@ -546,3 +544,202 @@ class TestTravelOrchestrator:
                             assert dest.weather is not None
                             # Events may be empty (no events in
                             # time window)
+
+    @pytest.mark.asyncio
+    async def test_weather_agent_failure_still_returns_poi_and_events(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_events: List[Event],
+    ) -> None:
+        """Verify weather failures degrade gracefully per destination."""
+        pytest.importorskip("src.orchestrator.travel_orchestrator")
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn:
+            mock_general.return_value = mock_general_destinations
+            mock_poi.return_value = mock_pois
+            mock_event.return_value = mock_events
+            mock_weather_fn.side_effect = ExternalServiceError(
+                "Weather agent unavailable"
+            )
+
+            orchestrator = TravelOrchestrator(orchestrator_settings)
+            result = await orchestrator.generate_itinerary(profile)
+
+        assert len(result.destinations) == len(mock_general_destinations)
+        for destination in result.destinations:
+            assert destination.points_of_interest == mock_pois
+            assert destination.events == mock_events
+            assert destination.weather is None
+
+    @pytest.mark.asyncio
+    async def test_poi_agent_failure_still_returns_weather_and_events(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_events: List[Event],
+        mock_weather: WeatherForecast,
+    ) -> None:
+        """Verify POI failures do not drop other specialist data."""
+        pytest.importorskip("src.orchestrator.travel_orchestrator")
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn:
+            mock_general.return_value = mock_general_destinations
+            mock_poi.side_effect = ExternalServiceError(
+                "POI agent unavailable"
+            )
+            mock_event.return_value = mock_events
+            mock_weather_fn.return_value = mock_weather
+
+            orchestrator = TravelOrchestrator(orchestrator_settings)
+            result = await orchestrator.generate_itinerary(profile)
+
+        assert len(result.destinations) == len(mock_general_destinations)
+        for destination in result.destinations:
+            assert destination.points_of_interest == []
+            assert destination.events == mock_events
+            assert destination.weather == mock_weather
+
+    @pytest.mark.asyncio
+    async def test_all_specialist_agent_failures_raise_generation_error(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+    ) -> None:
+        """Verify total specialist failure becomes a hard error."""
+        pytest.importorskip("src.orchestrator.travel_orchestrator")
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn:
+            mock_general.return_value = mock_general_destinations
+            mock_poi.side_effect = ExternalServiceError(
+                "POI agent failed"
+            )
+            mock_event.side_effect = ExternalServiceError(
+                "Event agent failed"
+            )
+            mock_weather_fn.side_effect = ExternalServiceError(
+                "Weather agent failed"
+            )
+
+            orchestrator = TravelOrchestrator(orchestrator_settings)
+
+            with pytest.raises(ItineraryGenerationError):
+                await orchestrator.generate_itinerary(profile)
+
+    @pytest.mark.asyncio
+    async def test_timeout_during_fan_out_preserves_completed_results(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_weather: WeatherForecast,
+    ) -> None:
+        """Verify specialist timeouts do not cancel successful peers."""
+        pytest.importorskip("src.orchestrator.travel_orchestrator")
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn:
+            mock_general.return_value = mock_general_destinations
+            mock_poi.return_value = mock_pois
+            mock_event.side_effect = ExternalServiceTimeoutError(
+                "Event agent timed out"
+            )
+            mock_weather_fn.return_value = mock_weather
+
+            orchestrator = TravelOrchestrator(orchestrator_settings)
+            result = await orchestrator.generate_itinerary(profile)
+
+        assert mock_poi.call_count == len(mock_general_destinations)
+        assert mock_weather_fn.call_count == len(mock_general_destinations)
+        for destination in result.destinations:
+            assert destination.points_of_interest == mock_pois
+            assert destination.events == []
+            assert destination.weather == mock_weather

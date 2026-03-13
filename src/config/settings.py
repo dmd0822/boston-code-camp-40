@@ -7,6 +7,7 @@ All secrets come from env vars — nothing is hard-coded.
 from functools import lru_cache
 from typing import Optional
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,9 +31,22 @@ class Settings(BaseSettings):
     # Azure AI Foundry (auth via DefaultAzureCredential — no API key)
     AZURE_AI_PROJECT_ENDPOINT: Optional[str] = None
     AZURE_AI_MODEL_DEPLOYMENT_NAME: Optional[str] = None
+    AZURE_OPENAI_TIMEOUT_SECONDS: float = Field(
+        default=30.0,
+        gt=0,
+    )
+
+    # Bing Web Search grounding
+    BING_SEARCH_API_KEY: Optional[str] = None
+    BING_SEARCH_ENDPOINT: str = "https://api.bing.microsoft.com/"
+    BING_SEARCH_TIMEOUT_SECONDS: float = Field(
+        default=10.0,
+        gt=0,
+    )
 
     # Application
     APP_VERSION: str = "0.1.0"
+    LOG_LEVEL: str = "INFO"
 
 
 @lru_cache

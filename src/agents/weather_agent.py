@@ -5,9 +5,7 @@ based on historical averages for the travel month. Returns None
 if insufficient web evidence.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Optional
 
 from agent_framework import Agent
@@ -15,9 +13,15 @@ from agent_framework_azure_ai import AzureAIClient
 from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
 
+from src.agents.agent_utils import (
+    load_system_prompt,
+    parse_json_payload,
+    run_agent_prompt,
+)
 from src.api.models.customer import TravelDates
 from src.api.models.itinerary import WeatherForecast
 from src.config.settings import Settings
+from src.exceptions import ExternalServiceError, ServiceConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +32,7 @@ def _load_system_prompt() -> str:
     Returns:
         System prompt as a string.
     """
-    prompt_path = (
-        Path(__file__).parent.parent.parent
-        / "data"
-        / "prompts"
-        / "weather-agent"
-        / "system.md"
-    )
-    return prompt_path.read_text(encoding="utf-8")
+    return load_system_prompt("weather-agent")
 
 
 def create_weather_agent(settings: Settings) -> Agent:
@@ -52,7 +49,7 @@ def create_weather_agent(settings: Settings) -> Agent:
         Configured Agent instance ready to forecast weather.
 
     Raises:
-        ValueError: If Azure OpenAI endpoint/deployment missing.
+        ServiceConfigurationError: If Azure OpenAI config is invalid.
     """
     if not all(
         [
@@ -60,30 +57,34 @@ def create_weather_agent(settings: Settings) -> Agent:
             settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
         ]
     ):
-        raise ValueError(
-            "Azure AI Foundry not configured. Set "
+        raise ServiceConfigurationError(
+            "Azure AI Foundry is not configured. Set "
             "AZURE_AI_PROJECT_ENDPOINT and "
             "AZURE_AI_MODEL_DEPLOYMENT_NAME."
         )
 
     credential = DefaultAzureCredential()
 
-    client = AzureAIClient(
-        project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
-        credential=credential,
-        model_deployment_name=settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
-    )
+    try:
+        client = AzureAIClient(
+            project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
+            credential=credential,
+            model_deployment_name=(
+                settings.AZURE_AI_MODEL_DEPLOYMENT_NAME
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ServiceConfigurationError(
+            "Azure OpenAI client could not be initialized."
+        ) from exc
 
     instructions = _load_system_prompt()
-
-    agent = Agent(
+    return Agent(
         client=client,
         instructions=instructions,
         name="weather-agent",
         description="Historical weather forecasting agent",
     )
-
-    return agent
 
 
 async def get_weather_forecast(
@@ -98,28 +99,28 @@ async def get_weather_forecast(
         destination_name: Name of the destination city/region.
         country: Country of the destination.
         travel_dates: Travel date range.
-        settings: Application settings (optional, will load if
-            None).
+        settings: Application settings (optional, will load if None).
 
     Returns:
-        WeatherForecast with historical averages, or None if
-        insufficient web evidence.
+        WeatherForecast with historical averages, or None if the
+        agent returns explicit ``null``.
 
     Raises:
-        ValueError: If Azure OpenAI credentials not configured.
+        ServiceConfigurationError: If Azure OpenAI config is missing.
+        ExternalServiceError: If the Weather Agent response is invalid.
     """
     if settings is None:
         from src.config.settings import get_settings
 
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except ValidationError as exc:
+            raise ServiceConfigurationError(
+                "Application settings could not be loaded."
+            ) from exc
 
-    # Create agent
     agent = create_weather_agent(settings)
-
-    # Extract month for weather query
     month_name = travel_dates.start.strftime("%B")
-
-    # Build user prompt
     user_prompt = (
         f"Provide historical weather forecast for:\n\n"
         f"Destination: {destination_name}, {country}\n"
@@ -131,55 +132,42 @@ async def get_weather_forecast(
     )
 
     logger.info(
-        f"Requesting weather forecast for {destination_name} "
-        f"from Weather Agent"
+        "Requesting weather forecast for %s from Weather Agent.",
+        destination_name,
+    )
+    response_text = await run_agent_prompt(
+        agent=agent,
+        user_prompt=user_prompt,
+        agent_name="Weather Agent",
+        timeout_seconds=settings.AZURE_OPENAI_TIMEOUT_SECONDS,
+        logger=logger,
     )
 
+    if response_text.lower() == "null":
+        logger.info(
+            "Weather Agent returned null for %s.",
+            destination_name,
+        )
+        return None
+
+    weather_data = parse_json_payload(response_text, "Weather Agent")
+    if not isinstance(weather_data, dict):
+        logger.error(
+            "Weather Agent returned payload type %s.",
+            type(weather_data).__name__,
+        )
+        raise ExternalServiceError(
+            "Weather Agent returned an invalid response format."
+        )
+
     try:
-        # Run agent
-        response = await agent.run(user_prompt)
-
-        # Parse response
-        response_text = response.text.strip()
-
-        # Try to extract JSON from markdown code blocks
-        if "```json" in response_text:
-            start = response_text.find("```json") + 7
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-
-        # Handle null response
-        if response_text.lower() == "null":
-            logger.info(
-                f"Weather Agent returned null for "
-                f"{destination_name}"
-            )
-            return None
-
-        # Parse JSON
-        weather_data = json.loads(response_text)
-
-        # Validate and convert to WeatherForecast
-        try:
-            forecast = WeatherForecast(**weather_data)
-            logger.info(
-                f"Weather Agent returned forecast for "
-                f"{destination_name}"
-            )
-            return forecast
-        except (KeyError, ValidationError) as e:
-            logger.warning(
-                f"Invalid weather forecast data: {e}"
-            )
-            return None
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse agent response as JSON: {e}")
+        forecast = WeatherForecast(**weather_data)
+    except (TypeError, ValidationError) as exc:
+        logger.warning("Invalid weather forecast data: %s", exc)
         return None
-    except Exception as e:
-        logger.error(f"Error running Weather Agent: {e}")
-        return None
+
+    logger.info(
+        "Weather Agent returned forecast for %s.",
+        destination_name,
+    )
+    return forecast

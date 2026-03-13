@@ -111,3 +111,38 @@
 - OpenAPI code generation for type-safe API client
 - Error boundaries recommended for production
 - Performance optimization (lazy loading, code splitting)
+
+---
+
+### 2026-03-13 — Phase 6.2 Loading UX Polish (Pris)
+
+**Status:** ✅ COMPLETE — Loading and error states now feel demo-ready without adding heavy animation libraries.
+
+**Architecture / UX Decisions:**
+- Frontend mirrors backend orchestration with a deterministic staged progress model: Phase 1 highlights destination matching, Phase 2 highlights POI/event/weather enrichment, and a final state assembles the itinerary.
+- Retry now replays the last submitted `CustomerProfile` from `useItinerary`, so the error CTA performs a real retry instead of sending users back through the form first.
+- All polish remains lightweight: CSS-only animation, skeleton placeholders, `aria-live` announcements, a semantic progress bar, and `prefers-reduced-motion` fallbacks.
+
+**Patterns to Reuse:**
+- Use a single loading component to combine progress messaging, visual animation, and skeleton previews when backend progress is known conceptually but not streamed.
+- Keep raw failure details available in the UI, but wrap them in friendlier recovery copy and clear next actions.
+- Put reveal transitions on the success view itself (`ItineraryView`) so loaded content always animates in consistently.
+
+**User Preferences / Demo Notes:**
+- Dave asked for a polished conference-demo feel with professional, lightweight motion and no external animation libraries.
+- Accessible loading and error feedback is a requirement, not optional polish.
+
+**Key Files:**
+- `src/frontend/src/components/LoadingState/LoadingState.tsx`
+- `src/frontend/src/components/LoadingState/LoadingState.module.css`
+- `src/frontend/src/components/ErrorState/ErrorState.tsx`
+- `src/frontend/src/components/ErrorState/ErrorState.module.css`
+- `src/frontend/src/hooks/useItinerary.ts`
+- `src/frontend/src/components/ItineraryView/ItineraryView.tsx`
+- `src/frontend/src/components/ItineraryView/ItineraryView.module.css`
+- `src/frontend/src/components/__tests__/LoadingState.test.tsx`
+- `src/frontend/src/components/__tests__/ErrorState.test.tsx`
+- `src/frontend/src/hooks/__tests__/useItinerary.test.ts`
+- `src/frontend/src/components/__tests__/CustomerForm.test.tsx`
+
+**Phase 6 Complete:** Backend hardening (Batty), frontend UX polish (Pris), comprehensive error testing (Zhora). 325 tests passing (262 backend + 63 frontend). Conference-demo ready.

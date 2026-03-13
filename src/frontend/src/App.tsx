@@ -10,7 +10,14 @@ import styles from './App.module.css';
  * Manages state-based view rendering for the travel agent workflow.
  */
 function App() {
-  const { state, itinerary, error, submitProfile, reset } = useItinerary();
+  const {
+    state,
+    itinerary,
+    error,
+    submitProfile,
+    retryLastSubmission,
+    reset,
+  } = useItinerary();
 
   return (
     <div className={styles.app}>
@@ -43,7 +50,11 @@ function App() {
         )}
 
         {state === 'error' && error && (
-          <ErrorState error={error} onRetry={reset} />
+          <ErrorState
+            error={error}
+            onRetry={retryLastSubmission}
+            onReset={reset}
+          />
         )}
       </main>
 

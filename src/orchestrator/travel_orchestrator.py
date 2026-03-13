@@ -6,8 +6,12 @@ Phase 2 (Concurrent): POI/Event/Weather agents enrich each dest.
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, List, Optional, TypeVar
+from typing import Generic, List, Optional, TypeVar
+
+from azure.core.exceptions import AzureError
 
 from src.agents.event_agent import find_events
 from src.agents.general_agent import recommend_destinations
@@ -22,21 +26,33 @@ from src.api.models.itinerary import (
     WeatherForecast,
 )
 from src.config.settings import Settings
+from src.exceptions import (
+    ApplicationError,
+    ItineraryGenerationError,
+)
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
 
+@dataclass
+class AgentCallResult(Generic[T]):
+    """Result wrapper that distinguishes success from fallback."""
+
+    value: T
+    failed: bool = False
+
+
 class TravelOrchestrator:
-    """Orchestrates the agent pipeline for itinerary generation.
+    """Orchestrate the agent pipeline for itinerary generation.
 
     Two-phase execution:
-    1. Sequential: General Agent recommends 3-4 destinations
-    2. Concurrent: POI/Event/Weather agents enrich each destination
+    1. Sequential: General Agent recommends 3-4 destinations.
+    2. Concurrent: POI/Event/Weather agents enrich each destination.
 
-    Error handling: Specialist agent failures result in partial
-    data (empty lists, None) rather than cascading failures.
+    Specialist agent failures degrade gracefully to partial results,
+    while General Agent failures bubble up to the API layer.
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -48,7 +64,8 @@ class TravelOrchestrator:
         self.settings = settings
 
     async def generate_itinerary(
-        self, profile: CustomerProfile
+        self,
+        profile: CustomerProfile,
     ) -> ItineraryResponse:
         """Build an itinerary for the given customer profile.
 
@@ -57,37 +74,61 @@ class TravelOrchestrator:
 
         Returns:
             ItineraryResponse with enriched destinations.
+
+        Raises:
+            ApplicationError: If the General Agent cannot complete.
+            ItineraryGenerationError: If orchestration fails.
         """
-        # Phase 1: Get destinations from General Agent (sequential)
         try:
             destinations = await recommend_destinations(
-                profile, self.settings
+                profile,
+                self.settings,
             )
-        except Exception as exc:
+        except ApplicationError:
             logger.error(
-                f"General Agent failed: {exc}",
+                "General Agent failed to recommend destinations.",
                 exc_info=True,
             )
-            # Return empty itinerary on General Agent failure
-            return ItineraryResponse(
-                destinations=[],
-                generated_at=datetime.now(timezone.utc),
+            raise
+        except (AzureError, RuntimeError, TimeoutError, TypeError) as exc:
+            logger.error(
+                "Destination recommendation failed unexpectedly.",
+                exc_info=True,
             )
+            raise ItineraryGenerationError(
+                "The itinerary could not be generated."
+            ) from exc
+        except Exception as exc:
+            logger.error(
+                "Destination recommendation failed unexpectedly.",
+                exc_info=True,
+            )
+            raise ItineraryGenerationError(
+                "The itinerary could not be generated."
+            ) from exc
 
         if not destinations:
-            logger.info("General Agent returned no destinations")
+            logger.info("General Agent returned no destinations.")
             return ItineraryResponse(
                 destinations=[],
                 generated_at=datetime.now(timezone.utc),
             )
 
-        # Phase 2: Enrich destinations concurrently
-        enriched_destinations = await asyncio.gather(
-            *[
-                self._enrich_destination(dest, profile.travel_dates)
-                for dest in destinations
-            ]
-        )
+        try:
+            enriched_destinations = await asyncio.gather(
+                *[
+                    self._enrich_destination(dest, profile.travel_dates)
+                    for dest in destinations
+                ]
+            )
+        except (AzureError, RuntimeError, TimeoutError, TypeError) as exc:
+            logger.error(
+                "Destination enrichment failed unexpectedly.",
+                exc_info=True,
+            )
+            raise ItineraryGenerationError(
+                "The itinerary could not be fully generated."
+            ) from exc
 
         return ItineraryResponse(
             destinations=enriched_destinations,
@@ -95,7 +136,9 @@ class TravelOrchestrator:
         )
 
     async def _enrich_destination(
-        self, destination: Destination, travel_dates: TravelDates
+        self,
+        destination: Destination,
+        travel_dates: TravelDates,
     ) -> Destination:
         """Enrich a destination with POI, event, and weather data.
 
@@ -109,7 +152,6 @@ class TravelOrchestrator:
         Returns:
             Enriched destination with POI, events, and weather.
         """
-        # Fan-out: Call all specialist agents concurrently
         poi_task = self._safe_call(
             find_points_of_interest,
             destination.name,
@@ -135,40 +177,73 @@ class TravelOrchestrator:
             default=None,
         )
 
-        poi_list, event_list, weather = await asyncio.gather(
-            poi_task, event_task, weather_task
+        poi_result, event_result, weather_result = await asyncio.gather(
+            poi_task,
+            event_task,
+            weather_task,
         )
 
-        # Fan-in: Merge results into destination
-        destination.points_of_interest = poi_list
-        destination.events = event_list
-        destination.weather = weather
+        if (
+            poi_result.failed
+            and event_result.failed
+            and weather_result.failed
+        ):
+            logger.error(
+                "All specialist agents failed for %s, %s.",
+                destination.name,
+                destination.country,
+            )
+            raise ItineraryGenerationError(
+                "All specialist agents failed while enriching "
+                "destination data."
+            )
 
+        destination.points_of_interest = poi_result.value
+        destination.events = event_result.value
+        destination.weather = weather_result.value
         return destination
 
     async def _safe_call(
         self,
-        agent_func: Callable[..., T],
-        *args,
+        agent_func: Callable[..., Awaitable[T]],
+        *args: object,
         default: T,
-        **kwargs,
-    ) -> T:
-        """Wrap agent call with error handling and default fallback.
+        **kwargs: object,
+    ) -> AgentCallResult[T]:
+        """Wrap a specialist agent call with graceful fallback.
 
         Args:
-            agent_func: The agent function to call.
+            agent_func: The specialist agent function to call.
             *args: Positional arguments for the agent function.
             default: Default value to return on failure.
             **kwargs: Keyword arguments for the agent function.
 
         Returns:
-            Agent function result on success, default on failure.
+            AgentCallResult[T]: Result value plus failure metadata.
         """
         try:
-            return await agent_func(*args, **kwargs)
-        except Exception as exc:
+            result = await agent_func(*args, **kwargs)
+            return AgentCallResult(value=result, failed=False)
+        except (ApplicationError, AzureError):
             logger.warning(
-                f"Agent {agent_func.__name__} failed: {exc}. "
-                f"Using default: {default}"
+                "Agent %s failed and will use default fallback.",
+                agent_func.__name__,
+                exc_info=True,
             )
-            return default
+            return AgentCallResult(value=default, failed=True)
+        except (RuntimeError, TimeoutError, TypeError, ValueError):
+            logger.warning(
+                "Agent %s failed unexpectedly and will use default "
+                "fallback.",
+                agent_func.__name__,
+                exc_info=True,
+            )
+            return AgentCallResult(value=default, failed=True)
+        except Exception:
+            logger.warning(
+                "Agent %s raised an unhandled exception and will use "
+                "default fallback.",
+                agent_func.__name__,
+                exc_info=True,
+            )
+            return AgentCallResult(value=default, failed=True)

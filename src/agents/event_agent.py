@@ -5,9 +5,7 @@ bounded events happening at a destination during the travel
 window. Returns empty list if no events match the dates.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 from agent_framework import Agent
@@ -15,9 +13,15 @@ from agent_framework_azure_ai import AzureAIClient
 from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
 
+from src.agents.agent_utils import (
+    load_system_prompt,
+    parse_json_payload,
+    run_agent_prompt,
+)
 from src.api.models.customer import TravelDates
 from src.api.models.itinerary import Event
 from src.config.settings import Settings
+from src.exceptions import ExternalServiceError, ServiceConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +32,7 @@ def _load_system_prompt() -> str:
     Returns:
         System prompt as a string.
     """
-    prompt_path = (
-        Path(__file__).parent.parent.parent
-        / "data"
-        / "prompts"
-        / "event-agent"
-        / "system.md"
-    )
-    return prompt_path.read_text(encoding="utf-8")
+    return load_system_prompt("event-agent")
 
 
 def create_event_agent(settings: Settings) -> Agent:
@@ -52,7 +49,7 @@ def create_event_agent(settings: Settings) -> Agent:
         Configured Agent instance ready to find events.
 
     Raises:
-        ValueError: If Azure OpenAI endpoint/deployment missing.
+        ServiceConfigurationError: If Azure OpenAI config is invalid.
     """
     if not all(
         [
@@ -60,30 +57,34 @@ def create_event_agent(settings: Settings) -> Agent:
             settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
         ]
     ):
-        raise ValueError(
-            "Azure AI Foundry not configured. Set "
+        raise ServiceConfigurationError(
+            "Azure AI Foundry is not configured. Set "
             "AZURE_AI_PROJECT_ENDPOINT and "
             "AZURE_AI_MODEL_DEPLOYMENT_NAME."
         )
 
     credential = DefaultAzureCredential()
 
-    client = AzureAIClient(
-        project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
-        credential=credential,
-        model_deployment_name=settings.AZURE_AI_MODEL_DEPLOYMENT_NAME,
-    )
+    try:
+        client = AzureAIClient(
+            project_endpoint=settings.AZURE_AI_PROJECT_ENDPOINT,
+            credential=credential,
+            model_deployment_name=(
+                settings.AZURE_AI_MODEL_DEPLOYMENT_NAME
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ServiceConfigurationError(
+            "Azure OpenAI client could not be initialized."
+        ) from exc
 
     instructions = _load_system_prompt()
-
-    agent = Agent(
+    return Agent(
         client=client,
         instructions=instructions,
         name="event-agent",
         description="Event and festival discovery agent",
     )
-
-    return agent
 
 
 async def find_events(
@@ -98,26 +99,26 @@ async def find_events(
         destination_name: Name of the destination city/region.
         country: Country of the destination.
         travel_dates: Travel date range.
-        settings: Application settings (optional, will load if
-            None).
+        settings: Application settings (optional, will load if None).
 
     Returns:
-        List of events overlapping the travel window. Returns
-        empty list if no events found (this is normal and
-        acceptable).
+        List of events overlapping the travel window.
 
     Raises:
-        ValueError: If Azure OpenAI credentials not configured.
+        ServiceConfigurationError: If Azure OpenAI config is missing.
+        ExternalServiceError: If the Event Agent response is invalid.
     """
     if settings is None:
         from src.config.settings import get_settings
 
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except ValidationError as exc:
+            raise ServiceConfigurationError(
+                "Application settings could not be loaded."
+            ) from exc
 
-    # Create agent
     agent = create_event_agent(settings)
-
-    # Build user prompt
     user_prompt = (
         f"Find events for this destination and date range:\n\n"
         f"Destination: {destination_name}, {country}\n"
@@ -128,50 +129,44 @@ async def find_events(
     )
 
     logger.info(
-        f"Requesting events for {destination_name} from Event "
-        f"Agent"
+        "Requesting events for %s from Event Agent.",
+        destination_name,
     )
+    response_text = await run_agent_prompt(
+        agent=agent,
+        user_prompt=user_prompt,
+        agent_name="Event Agent",
+        timeout_seconds=settings.AZURE_OPENAI_TIMEOUT_SECONDS,
+        logger=logger,
+    )
+    events_data = parse_json_payload(response_text, "Event Agent")
 
-    try:
-        # Run agent
-        response = await agent.run(user_prompt)
-
-        # Parse response
-        response_text = response.text.strip()
-
-        # Try to extract JSON from markdown code blocks
-        if "```json" in response_text:
-            start = response_text.find("```json") + 7
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-
-        # Parse JSON
-        events_data = json.loads(response_text)
-
-        # Validate and convert to Event objects
-        events: List[Event] = []
-        for event_data in events_data:
-            try:
-                event = Event(**event_data)
-                events.append(event)
-            except (KeyError, ValidationError) as e:
-                logger.warning(
-                    f"Skipping invalid event data: {e}"
-                )
-
-        logger.info(
-            f"Event Agent returned {len(events)} events for "
-            f"{destination_name}"
+    if not isinstance(events_data, list):
+        logger.error(
+            "Event Agent returned payload type %s.",
+            type(events_data).__name__,
         )
-        return events
+        raise ExternalServiceError(
+            "Event Agent returned an invalid response format."
+        )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse agent response as JSON: {e}")
-        return []
-    except Exception as e:
-        logger.error(f"Error running Event Agent: {e}")
-        return []
+    events: List[Event] = []
+    for event_data in events_data:
+        if not isinstance(event_data, dict):
+            logger.warning(
+                "Skipping non-object event payload: %r",
+                event_data,
+            )
+            continue
+
+        try:
+            events.append(Event(**event_data))
+        except (TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid event data: %s", exc)
+
+    logger.info(
+        "Event Agent returned %s events for %s.",
+        len(events),
+        destination_name,
+    )
+    return events

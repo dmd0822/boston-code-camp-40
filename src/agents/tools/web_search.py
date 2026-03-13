@@ -9,11 +9,13 @@ returns an empty list so agents can still function without it.
 """
 
 import logging
-import os
 from typing import Any, Dict, List
 
 import httpx
 from agent_framework import tool
+from pydantic import ValidationError
+
+from src.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,18 @@ class SearchResult(Dict[str, Any]):
     """Search result with title, URL, and snippet."""
 
     pass
+
+
+def _load_search_settings() -> Settings:
+    """Load uncached settings so env overrides apply immediately.
+
+    Returns:
+        Settings: Fresh settings instance for the current call.
+
+    Raises:
+        ValidationError: If the environment configuration is invalid.
+    """
+    return Settings()
 
 
 @tool
@@ -35,9 +49,6 @@ async def search_web(
     the Bing API and returns structured results that agents can
     cite in their responses.
 
-    Credentials are read from environment variables so the tool
-    works independently of the application Settings model.
-
     Args:
         query: Search query string.
         max_results: Maximum number of results to return.
@@ -47,74 +58,105 @@ async def search_web(
         Returns empty list if API credentials are missing or on
         error.
     """
-    api_key = os.environ.get("BING_SEARCH_API_KEY", "")
-    endpoint = os.environ.get(
-        "BING_SEARCH_ENDPOINT", "https://api.bing.microsoft.com/"
-    )
+    normalized_query = query.strip()
+    if not normalized_query:
+        logger.warning("Received empty Bing search query.")
+        return []
+
+    limited_results = max(1, min(max_results, 10))
+
+    try:
+        settings = _load_search_settings()
+    except ValidationError:
+        logger.error("Bing Search settings are invalid.", exc_info=True)
+        return []
+
+    api_key = settings.BING_SEARCH_API_KEY or ""
+    endpoint = settings.BING_SEARCH_ENDPOINT.rstrip("/")
+    timeout_seconds = settings.BING_SEARCH_TIMEOUT_SECONDS
 
     if not api_key:
         logger.warning(
-            "Bing Search API credentials not configured. "
-            "Returning empty results."
+            "Bing Search API credentials not configured. Returning "
+            "empty results."
         )
         return []
 
     headers = {"Ocp-Apim-Subscription-Key": api_key}
     params = {
-        "q": query,
-        "count": max_results,
+        "q": normalized_query,
+        "count": limited_results,
         "mkt": "en-US",
     }
+    timeout = httpx.Timeout(timeout_seconds)
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.get(
-                f"{endpoint.rstrip('/')}/v7.0/search",
+                f"{endpoint}/v7.0/search",
                 headers=headers,
                 params=params,
             )
             response.raise_for_status()
-
-            data = response.json()
-            web_pages = data.get("webPages", {}).get("value", [])
-
-            results: List[SearchResult] = []
-            for page in web_pages[:max_results]:
-                results.append(
-                    SearchResult(
-                        {
-                            "title": page.get("name", ""),
-                            "url": page.get("url", ""),
-                            "snippet": page.get("snippet", ""),
-                        }
-                    )
-                )
-
-            logger.info(
-                f"Web search for '{query}' returned "
-                f"{len(results)} results"
-            )
-            return results
-
     except httpx.TimeoutException:
-        logger.error(f"Timeout searching for '{query}'")
+        logger.error(
+            "Bing Search timed out for query '%s'.",
+            normalized_query,
+            exc_info=True,
+        )
         return []
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 401:
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if status_code == 401:
             logger.error(
                 "Invalid Bing Search API key. Check "
                 "BING_SEARCH_API_KEY."
             )
-        elif e.response.status_code == 429:
+        elif status_code == 429:
             logger.error("Bing Search API rate limit exceeded.")
         else:
             logger.error(
-                f"HTTP error {e.response.status_code} "
-                f"searching for '{query}'"
+                "Bing Search HTTP error %s for query '%s'.",
+                status_code,
+                normalized_query,
+                exc_info=True,
             )
         return []
-    except Exception as e:
+    except httpx.RequestError as exc:
         logger.error(
-            f"Unexpected error searching for '{query}': {e}"
+            "Bing Search request failed for query '%s': %s",
+            normalized_query,
+            exc,
+            exc_info=True,
         )
         return []
+
+    try:
+        data = response.json()
+    except ValueError:
+        logger.error(
+            "Bing Search returned invalid JSON for query '%s'.",
+            normalized_query,
+            exc_info=True,
+        )
+        return []
+
+    web_pages = data.get("webPages", {}).get("value", [])
+    results: List[SearchResult] = []
+    for page in web_pages[:limited_results]:
+        results.append(
+            SearchResult(
+                {
+                    "title": page.get("name", ""),
+                    "url": page.get("url", ""),
+                    "snippet": page.get("snippet", ""),
+                }
+            )
+        )
+
+    logger.info(
+        "Web search for '%s' returned %s results.",
+        normalized_query,
+        len(results),
+    )
+    return results
