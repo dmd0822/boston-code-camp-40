@@ -3,11 +3,8 @@ name: Build, Test & Deploy (Dev)
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - 'notebooks/**'
-      - 'reports/**'
+    paths:
+      - 'src/**'
   workflow_dispatch:
 
 permissions:
