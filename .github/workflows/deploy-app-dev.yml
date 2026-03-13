@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+  workflow_run:
+    workflows: ["Deploy Infrastructure (Dev)"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,6 +25,8 @@ jobs:
   load-config:
     name: Load Config
     runs-on: ubuntu-latest
+    # Skip if triggered by a failed infrastructure workflow
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       resource_group: ${{ steps.config.outputs.resource_group }}
       location: ${{ steps.config.outputs.location }}
