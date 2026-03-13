@@ -514,12 +514,12 @@ class TestManagedIdentity:
         assert "Microsoft.Authorization/roleAssignments" in main_bicep_content, \
             "main.bicep should have role assignments"
 
-    def test_has_cognitive_services_role_assignment(
+    def test_has_azure_ai_user_role_assignment(
         self, main_bicep_content: str
     ):
-        """Test that backend gets Cognitive Services OpenAI User role."""
-        assert "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd" in main_bicep_content, \
-            "main.bicep should have Cognitive Services OpenAI User role ID"
+        """Test that backend gets Azure AI User role."""
+        assert "53ca6127-db72-4b80-b1b0-d745d6d5456d" in main_bicep_content, \
+            "main.bicep should have Azure AI User role ID"
 
     def test_no_registry_credentials(self, main_bicep_content: str):
         """Test that no registry credentials are passed to container apps."""

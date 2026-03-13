@@ -16,7 +16,7 @@ var tags = {
 
 // Well-known Azure role definition IDs
 var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-var cognitiveServicesOpenAIUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+var azureAIUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
 
 // ========================================
 // User-Assigned Managed Identity (for ACR pull)
@@ -120,13 +120,12 @@ module backendApp 'modules/container-app.bicep' = {
 }
 
 // ========================================
-// Role: Cognitive Services OpenAI User for backend on AI Foundry
+// Role: Azure AI User for backend on AI Foundry (resource group scope)
 // ========================================
 resource backendAIRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(aiFoundryResource.id, backendApp.name, cognitiveServicesOpenAIUserRoleId)
-  scope: aiFoundryResource
+  name: guid(resourceGroup().id, backendApp.name, azureAIUserRoleId)
   properties: {
-    roleDefinitionId: cognitiveServicesOpenAIUserRoleId
+    roleDefinitionId: azureAIUserRoleId
     principalId: backendApp.outputs.principalId
     principalType: 'ServicePrincipal'
   }
