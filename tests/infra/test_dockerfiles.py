@@ -92,7 +92,7 @@ class TestBackendDockerfile:
             "Dockerfile should not copy notebooks/ directory"
 
     def test_does_not_copy_frontend(self, dockerfile_content: str):
-        """Test that frontend/ directory is not copied."""
+        """Test that src/frontend/ directory is not copied."""
         assert not re.search(r'COPY\s+frontend/', dockerfile_content), \
             "Dockerfile should not copy frontend/ directory"
 
@@ -108,7 +108,7 @@ class TestFrontendDockerfile:
     @pytest.fixture
     def dockerfile_path(self) -> Path:
         """Path to the frontend Dockerfile."""
-        return Path(__file__).parent.parent.parent / "frontend" / "Dockerfile"
+        return Path(__file__).parent.parent.parent / "src" / "frontend" / "Dockerfile"
 
     @pytest.fixture
     def dockerfile_content(self, dockerfile_path: Path) -> str:
@@ -164,7 +164,7 @@ class TestNginxConfig:
     @pytest.fixture
     def nginx_conf_path(self) -> Path:
         """Path to the nginx configuration template."""
-        return Path(__file__).parent.parent.parent / "frontend" / "nginx.conf.template"
+        return Path(__file__).parent.parent.parent / "src" / "frontend" / "nginx.conf.template"
 
     @pytest.fixture
     def nginx_conf_content(self, nginx_conf_path: Path) -> str:

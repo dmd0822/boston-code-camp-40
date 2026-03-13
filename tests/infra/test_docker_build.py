@@ -59,10 +59,10 @@ class TestDockerBuild:
         """
         Test that the frontend Dockerfile builds successfully.
         
-        This test runs: docker build -t travel-agent-frontend-test frontend/
+        This test runs: docker build -t travel-agent-frontend-test src/frontend/
         """
         result = subprocess.run(
-            ["docker", "build", "-t", "travel-agent-frontend-test", "frontend"],
+            ["docker", "build", "-t", "travel-agent-frontend-test", "src/frontend"],
             cwd=repo_root,
             capture_output=True,
             text=True,
