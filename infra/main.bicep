@@ -126,7 +126,7 @@ module backendAIRole 'modules/role-assignment.bicep' = {
   params: {
     principalId: backendApp.outputs.principalId
     roleDefinitionId: azureAIUserRoleId
-    description: 'Grants backend container app access to AI Foundry Agent Service'
+    roleDescription: 'Grants backend container app access to AI Foundry Agent Service'
     enabled: createRoleAssignments
   }
 }

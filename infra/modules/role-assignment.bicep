@@ -17,7 +17,7 @@ param principalType string = 'ServicePrincipal'
 param scopeSeed string = resourceGroup().id
 
 @description('Optional description for the role assignment')
-param description string = ''
+param roleDescription string = ''
 
 @description('Whether to create the role assignment. Set to false to skip if it already exists.')
 param enabled bool = true
@@ -31,7 +31,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = i
     roleDefinitionId: roleDefinitionId
     principalId: principalId
     principalType: principalType
-    description: !empty(description) ? description : null
+    description: !empty(roleDescription) ? roleDescription : null
   }
 }
 
