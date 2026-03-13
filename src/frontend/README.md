@@ -1,53 +1,63 @@
 # Travel Agent AI - Frontend
 
-A React + TypeScript single-page application for the Travel Agent AI system. This frontend connects to a FastAPI backend to generate personalized travel itineraries with destinations, points of interest, events, and weather forecasts.
+This React + TypeScript single-page application lives in `src/frontend/`
+and connects to the FastAPI backend to generate personalized travel
+itineraries with destinations, points of interest, events, and weather
+recommendations.
 
 ## 🚀 Features
 
-- **Customer Profile Form**: Collects travel preferences including interests, budget, dates, party size, and departure city
-- **AI-Powered Itinerary Generation**: Submits profile to backend and receives curated destination recommendations
-- **Rich Destination Cards**: Displays detailed information about each destination including:
-  - Rationale for selection
-  - Points of interest with categories and visit durations
-  - Local events during travel dates
-  - Weather forecasts with clothing suggestions
-- **Responsive Design**: Works seamlessly on desktop and tablet devices
-- **State Management**: Clean state-based UI flow (idle → loading → success/error)
-- **Accessible**: Proper ARIA labels, keyboard navigation, and screen reader support
+- **Customer Profile Form**: Collects travel preferences including
+  interests, budget, dates, party size, and departure city
+- **AI-Powered Itinerary Generation**: Submits profiles to the backend
+  and renders grounded itinerary recommendations
+- **Rich Destination Cards**: Displays destination rationale, points of
+  interest, events, and weather guidance
+- **Responsive Design**: Works well on desktop and tablet layouts
+- **State Management**: Clean idle → loading → success/error workflow
+- **Accessible UI**: ARIA labels, keyboard navigation, and readable
+  validation feedback
+- **Container Runtime**: nginx proxies `/api/*` to the backend using a
+  templated config at startup
 
 ## 🛠️ Tech Stack
 
 - **React 19** - UI library
 - **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
+- **Vite** - Development server and build tool
 - **CSS Modules** - Component-scoped styling
-- **Native Fetch API** - HTTP requests (no external dependencies)
+- **Vitest + React Testing Library** - Frontend test stack
+- **nginx + envsubst** - Production runtime and backend proxy wiring
 
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm
 - Backend API running on `http://localhost:8000`
+- Repository root at `C:\repos\boston-code-camp-40`
 
 ## 🔧 Setup
 
-1. **Install dependencies**:
+From the repository root:
+
+1. **Install dependencies**
    ```bash
+   cd src/frontend
    npm install
    ```
 
-2. **Start development server**:
+2. **Start the development server**
    ```bash
    npm run dev
    ```
-   The app will be available at `http://localhost:5173`
+   The app will be available at `http://localhost:5173`.
 
-3. **Build for production**:
+3. **Build for production**
    ```bash
    npm run build
    ```
-   Output will be in the `dist/` folder
+   Output is written to `dist/`.
 
-4. **Preview production build**:
+4. **Preview the production build**
    ```bash
    npm run preview
    ```
@@ -55,161 +65,118 @@ A React + TypeScript single-page application for the Travel Agent AI system. Thi
 ## 📁 Project Structure
 
 ```
-frontend/
+src/frontend/
 ├── src/
 │   ├── api/
 │   │   └── itineraryApi.ts          # API client functions
 │   ├── components/
 │   │   ├── CustomerForm/            # Travel preference form
 │   │   ├── DestinationCard/         # Single destination display
+│   │   ├── ErrorState/              # Error display and retry
 │   │   ├── ItineraryView/           # Full itinerary display
-│   │   ├── LoadingState/            # Loading spinner
-│   │   └── ErrorState/              # Error display with retry
+│   │   └── LoadingState/            # Loading spinner
 │   ├── hooks/
-│   │   └── useItinerary.ts          # Custom hook for workflow state
+│   │   └── useItinerary.ts          # Workflow state hook
 │   ├── types/
-│   │   └── itinerary.ts             # TypeScript type definitions
+│   │   └── itinerary.ts             # Shared frontend types
 │   ├── App.tsx                      # Main application component
 │   ├── App.module.css               # App-level styles
-│   ├── main.tsx                     # Entry point
-│   └── index.css                    # Global styles
+│   ├── index.css                    # Global styles
+│   └── main.tsx                     # Entry point
+├── Dockerfile                       # Multi-stage Node → nginx image
+├── entrypoint.sh                    # Injects BACKEND_URL/BACKEND_HOST
+├── nginx.conf.template              # nginx proxy + SPA routing template
 ├── index.html                       # HTML template
-├── vite.config.ts                   # Vite configuration (includes API proxy)
-├── tsconfig.json                    # TypeScript configuration
 ├── package.json                     # Dependencies and scripts
+├── tsconfig.json                    # TypeScript configuration
+├── vite.config.ts                   # Vite dev proxy configuration
 └── README.md                        # This file
 ```
 
 ## 🔗 API Integration
 
-The frontend connects to the backend via Vite's proxy configuration:
+The frontend connects to the backend with relative `/api/*` requests.
 
-- **Development**: `/api/*` → `http://localhost:8000/api/*`
-- **Production**: Configure your web server to proxy `/api/*` to the backend
+- **Development**: Vite proxies `/api/*` → `http://localhost:8000`
+- **Production**: `nginx.conf.template` is rendered by `entrypoint.sh`
+  using `envsubst` so `BACKEND_URL` and `BACKEND_HOST` point the SPA to
+  the deployed backend
+- **TLS proxying**: nginx enables `proxy_ssl_server_name on` and sends
+  the derived backend host for secure upstream routing
 
 ### API Endpoints Used
 
-1. **POST /api/itinerary**
-   - Submits customer profile
-   - Returns itinerary with destinations, POIs, events, weather
-
-2. **GET /api/health**
-   - Health check endpoint
-   - Returns API status and version
+1. **POST `/api/itinerary`**
+   - Submits customer profile data
+   - Returns itinerary recommendations with destinations, POIs, events,
+     and weather
+2. **GET `/api/health`**
+   - Checks backend health and version
 
 ## 🎨 Design
 
-The UI uses a travel-themed color palette:
-- **Primary**: Blue (#2196F3) - Trust, sky, water
-- **Accents**: Teal, warm oranges
-- **Backgrounds**: Clean whites with subtle gradients
-
-CSS Modules ensure component-scoped styling with no conflicts.
+The UI uses a travel-themed palette with a focus on clarity, readable
+cards, and fast handoff from form input to itinerary results. CSS
+Modules keep component styling isolated.
 
 ## 📝 Usage Flow
 
-1. **User fills out form** with travel preferences:
-   - Interests (comma-separated)
-   - Budget level
-   - Travel dates
-   - Party size
-   - Departure city
-   - Optional notes
-
-2. **Form validation** ensures:
-   - At least one interest
-   - Valid date range
-   - Party size ≥ 1
-   - Non-empty departure city
-
-3. **Submit triggers loading state** with spinner and message
-
-4. **Success displays itinerary** with:
-   - Multiple destinations
-   - Each destination shows POIs, events, weather
-   - All source URLs are clickable
-
-5. **"Plan Another Trip" button** resets to form
+1. **User fills out the form** with interests, budget, dates, party size,
+   departure city, and optional notes
+2. **Validation runs client-side** before submission
+3. **Submit triggers loading state** and calls the backend API
+4. **Success renders itinerary results** with destination details and
+   supporting travel information
+5. **Plan Another Trip** resets the workflow to the form
 
 ## 🧪 Development
 
 ### Type Safety
 
-All API contracts match the backend Pydantic models exactly using snake_case field names.
+Frontend API contracts mirror the backend Pydantic models using
+snake_case field names.
 
 ### Component Architecture
 
-- **Presentational components**: Pure UI rendering (DestinationCard, LoadingState, ErrorState)
-- **Container components**: State management and logic (App, CustomerForm)
-- **Custom hooks**: Reusable stateful logic (useItinerary)
+- **Presentational components**: DestinationCard, LoadingState,
+  ErrorState
+- **Stateful components**: App, CustomerForm, ItineraryView
+- **Custom hooks**: `useItinerary` manages the request lifecycle
 
 ### Best Practices
 
 - TypeScript strict mode enabled
-- Proper error handling with descriptive messages
-- Accessible forms with labels and error messages
-- Responsive design with media queries
-- Clean separation of concerns
+- Relative `/api/*` requests only
+- Accessible forms and validation messaging
+- Responsive layouts with clear loading/error states
+- Clean separation between API client, state, and presentation
 
 ## 🧪 Testing
 
-The frontend includes 66 comprehensive tests across 8 test files using **Vitest + React Testing Library**:
-
-### Test Coverage
-
-- ✅ **Component Tests** (CustomerForm, ItineraryView, DestinationCard, LoadingState, ErrorState)
-  - Rendering with props
-  - User interactions (form submission, button clicks)
-  - Conditional rendering based on state
-  - Error boundary behaviors
-
-- ✅ **Hook Tests** (useItinerary)
-  - State machine transitions (idle → loading → success/error)
-  - API call orchestration
-  - Error handling and retry logic
-
-- ✅ **API Client Tests**
-  - `createItinerary()` request/response handling
-  - `getHealth()` endpoint verification
-  - Network error handling
-
-- ✅ **Accessibility & UX Tests**
-  - ARIA labels and semantic HTML
-  - Keyboard navigation (Tab, Enter)
-  - Screen reader support
-  - Form validation feedback
+The frontend includes **66 passing tests** across components, hooks, API
+client behavior, and accessibility.
 
 ### Running Tests
 
 ```bash
-# Run all tests
+cd src/frontend
 npm run test
-
-# Run with coverage report
 npm run test -- --coverage
-
-# Watch mode (re-run on changes)
-npm run test -- --watch
-
-# Run specific test file
+npm run test:watch
 npm run test -- CustomerForm.test.tsx
-
-# Run tests matching pattern
-npm run test -- --grep "form validation"
 ```
-
-**Test Results:** All 66 tests passing ✅
 
 ## 🐛 Troubleshooting
 
-**Issue**: "Failed to fetch" errors
-- **Solution**: Ensure backend is running on `http://localhost:8000`
+**Issue:** `Failed to fetch`
+- **Solution:** Ensure the backend is running on `http://localhost:8000`
 
-**Issue**: CORS errors
-- **Solution**: Backend must include CORS middleware for `http://localhost:5173`
+**Issue:** Proxying to the deployed backend fails
+- **Solution:** Confirm `BACKEND_URL` is set correctly for the container
+  and that `entrypoint.sh` rendered `nginx.conf.template`
 
-**Issue**: Build fails with TypeScript errors
-- **Solution**: Run `npm install` to ensure all types are installed
+**Issue:** Build fails with TypeScript errors
+- **Solution:** Run `npm install` in `src/frontend/`
 
 ## 📄 License
 

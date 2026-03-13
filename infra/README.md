@@ -1,90 +1,119 @@
 # Travel Agent Application - Azure Infrastructure
 
-This directory contains the Infrastructure as Code (IaC) for deploying the Travel Agent Application to Azure using Bicep and Azure Container Apps.
+This directory contains the Infrastructure as Code (IaC) for deploying
+the Travel Agent Application to Azure with Bicep, Azure Container Apps,
+and Azure AI Foundry.
 
 ## Architecture Overview
 
-The deployment creates the following Azure resources:
+The deployment centers on a resource group that hosts the application,
+runtime identities, and Azure AI resources:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        Resource Group                               │
-│                                                                      │
-│  ┌──────────────────┐          ┌────────────────────┐              │
-│  │  Azure Container │          │  Azure Container   │              │
-│  │    Registry      │──images──│   Apps Environment │              │
-│  │   (ACR)          │          │                    │              │
-│  └──────────────────┘          │  ┌──────────────┐  │              │
-│                                 │  │   Frontend   │  │              │
-│  ┌──────────────────┐          │  │ Container App│  │              │
-│  │  Azure OpenAI    │◀─────────│  └──────┬───────┘  │              │
-│  │  (GPT-4o)        │  runtime │         │          │              │
-│  └────────┬─────────┘          │  ┌──────▼───────┐  │              │
-│           │                    │  │   Backend    │  │              │
-│           │ connection         │  │ Container App│  │              │
-│           │                    │  └──────────────┘  │              │
-│           ▼                    └────────────────────┘              │
-│  ┌──────────────────┐                                              │
-│  │  AI Foundry Hub  │          ┌──────────────────┐               │
-│  │  (Management)    │◀─────────│  AI Foundry      │               │
-│  │                  │          │  Project         │               │
-│  └──────────────────┘          └──────────────────┘               │
-│                                                                      │
-│  ┌──────────────────┐                                              │
-│  │  Bing Search API │──────────▶ Backend Container App            │
-│  └──────────────────┘                                              │
-│                                                                      │
+│                           Resource Group                           │
+│                                                                     │
+│  ┌──────────────────┐      ┌─────────────────────────────────────┐  │
+│  │ User-Assigned    │      │ Azure Container Apps Environment    │  │
+│  │ Identity         │─────▶│                                     │  │
+│  │ (ACR pull)       │      │  ┌──────────────┐  ┌──────────────┐ │  │
+│  └────────┬─────────┘      │  │ Frontend App │  │ Backend App  │ │  │
+│           │                │  │ nginx + SPA  │  │ FastAPI      │ │  │
+│           ▼                │  └──────┬───────┘  └──────┬───────┘ │  │
+│  ┌──────────────────┐      └─────────│──────────────────│────────┘  │
+│  │ Azure Container  │                │                  │           │
+│  │ Registry (ACR)   │◀───────────────┘                  │           │
+│  │ admin disabled   │                                   │           │
+│  └──────────────────┘                                   │           │
+│                                                         ▼           │
+│                                            ┌──────────────────────┐ │
+│                                            │ Azure AI Foundry     │ │
+│                                            │ Account + Project    │ │
+│                                            │ + GPT-4o deployment  │ │
+│                                            └──────────────────────┘ │
+│                                                         │           │
+│                                                         ▼           │
+│                                            ┌──────────────────────┐ │
+│                                            │ Optional Bing Search │ │
+│                                            │ integration module   │ │
+│                                            └──────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Components
 
-1. **Azure Container Registry (ACR)**: Private Docker registry for application images
-2. **Container Apps Environment**: Managed Kubernetes environment for hosting containers
-3. **Frontend Container App**: React SPA served via nginx (port 80)
-4. **Backend Container App**: FastAPI application on Uvicorn (port 8000)
-5. **Azure OpenAI**: GPT-4o model deployment for AI capabilities
-6. **Azure AI Foundry**: Hub and project for AI resource governance and management
-7. **Bing Search API**: Web search integration
+1. **`acr.bicep`** — Azure Container Registry with admin access disabled
+2. **`container-app-env.bicep`** — Shared Container Apps environment
+3. **`container-app.bicep`** — Reusable frontend/backend Container App
+   module
+4. **`ai-foundry.bicep`** — Combined AI Services account, AI Foundry
+   project, and model deployment
+5. **`bing-search.bicep`** — Bing Search resource module for optional
+   search-backed scenarios
+6. **`role-assignment.bicep`** — Resource-group-scoped role assignment
+   helper with deterministic naming
+7. **`acr-role-assignment.bicep`** — ACR-scoped role assignment helper
+   for `AcrPull`
 
 ### Key Features
 
-- **Consumption-based pricing**: Pay only for what you use
-- **Auto-scaling**: 0-3 replicas based on HTTP load
-- **Managed ingress**: HTTPS endpoints with automatic certificates
-- **Secret management**: Secure injection of API keys via Container Apps secrets
-- **No authentication/database**: Stateless API for MVP simplicity
+- **Managed identity first**: The backend authenticates with
+  `DefaultAzureCredential`; local dev uses Azure CLI and Azure uses
+  managed identity
+- **ACR admin disabled**: `adminUserEnabled: false` and image pulls use a
+  user-assigned identity instead of registry passwords
+- **Reusable RBAC modules**: Role assignment modules support
+  deterministic GUID names and conditional creation via `enabled`
+- **Runtime AI integration**: The backend calls Azure AI Foundry Agent
+  Service at runtime through the project endpoint, not just for
+  governance
+- **OIDC-ready deployment**: GitHub Actions uses Azure federated
+  credentials for infra and app deployment
 
-## Azure AI Foundry
+## Validation and Testing
 
-**Azure AI Foundry** provides a hub-and-project model for managing AI resources in a centralized, governed manner. It's the recommended approach for enterprise AI deployments on Azure.
+The current infrastructure validation suite covers **109 passing checks**
+across Bicep validation and Dockerfile verification. An additional
+**4 Docker build checks are skipped** automatically when a Docker daemon
+is unavailable.
 
-### What is AI Foundry?
+Run the infra tests from the repository root:
 
-- **Hub**: Central workspace that manages shared resources (storage, key vault, connections)
-- **Project**: Individual development environment linked to a hub, used for organizing AI workflows
-- **Connections**: Managed links to AI services (e.g., Azure OpenAI) visible in the Foundry portal
+```bash
+pytest tests/infra/
+pytest tests/infra/ -m "not docker_build"
+```
 
-### How It Works in This Application
+## Azure AI Foundry Runtime Model
 
-1. The **Azure OpenAI resource** is still deployed directly and used by the backend at runtime
-2. The **AI Foundry Hub** is created to manage the OpenAI connection
-3. The **AI Foundry Project** provides a workspace for viewing and managing AI assets
-4. An **OpenAI connection** is registered in the hub for governance and visibility
+This project now treats Azure AI Foundry as both the deployment target
+and the runtime dependency for agent execution.
 
-### Key Benefits
+### What `ai-foundry.bicep` provisions
 
-- **Centralized management**: View all AI resources in one place (Azure AI Studio)
-- **Governance**: Track usage, quotas, and costs across AI services
-- **Team collaboration**: Share connections and configurations across projects
-- **Future-ready**: Easily add prompt flow, evaluations, and other Foundry features
+- An **Azure AI Services account** (`kind: AIServices`)
+- An **AI Foundry project** as a child resource
+- A **GPT-4o model deployment** for agent execution
+- `disableLocalAuth: true`, so application code uses Azure Identity
+  instead of service keys
 
-### Important Note
+### How the backend connects
 
-The backend application **still connects directly to Azure OpenAI** using the endpoint and API key. AI Foundry is a **management layer**, not a runtime dependency. This means:
-- The app doesn't call Foundry APIs at runtime
-- Foundry provides governance, monitoring, and portal access
-- If Foundry is removed, the app continues to work (it only loses management features)
+At runtime the backend creates `AzureAIClient` with:
+
+- `project_endpoint=AZURE_AI_PROJECT_ENDPOINT`
+- `model_deployment_name=AZURE_AI_MODEL_DEPLOYMENT_NAME`
+- `credential=DefaultAzureCredential()`
+
+That means:
+- **Local development** uses `az login` → `AzureCliCredential`
+- **Azure Container Apps** uses the backend's system-assigned managed
+  identity
+- The backend managed identity needs the **Azure AI User** role
+  (`53ca6127-db72-4b80-b1b0-d745d6d5456d`) at resource-group scope
+
+AI Foundry is no longer just a management layer for this app; it is the
+backend's live agent runtime.
 
 ## Prerequisites
 
@@ -94,154 +123,110 @@ Before deploying, ensure you have:
    ```bash
    az --version
    ```
-   Install: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
-
-2. **Bicep CLI** (included with Azure CLI)
+2. **Bicep CLI** (bundled with Azure CLI)
    ```bash
    az bicep version
    ```
-
-3. **Docker** (for building images)
+3. **Docker** for image builds
    ```bash
    docker --version
    ```
-   Install: https://docs.docker.com/get-docker/
-
-4. **Azure Subscription** with permissions to create resources
-
-5. **Azure CLI Login**
+4. **Azure subscription** with permission to deploy resource-group
+   resources and role assignments
+5. **Azure login**
    ```bash
    az login
    az account set --subscription <subscription-id>
    ```
-
-6. **Microsoft.Bing resource provider registration** (required when `deployBingSearch = true`)
+6. **Optional Bing provider registration** if you plan to use the Bing
+   module in your environment
    ```bash
    az provider register --namespace Microsoft.Bing
    ```
 
 ## Deployment Guide
 
-### Step 1: Create Resource Group
+### Step 1: Create the resource group
 
-The resource group must exist before deployment. Resource group names are configured in `infra/environments.json`:
+The resource group must already exist. Environment names and locations
+are defined in `infra/environments.json`.
 
 ```bash
-# Set variables from config
 $RESOURCE_GROUP = "rg-travel-agent-dev"
 $LOCATION = "westus3"
 
-# Create resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
 ```
 
-### Step 2: Deploy Infrastructure
+### Step 2: Deploy infrastructure
 
-Deploy into the pre-existing resource group:
+Deploy with the current Bicep parameter files:
 
 ```bash
-# Deploy with dev parameters
-az deployment group create `
-  --resource-group $RESOURCE_GROUP `
-  --template-file infra/main.bicep `
+az deployment group create \
+  --resource-group $RESOURCE_GROUP \
+  --template-file infra/main.bicep \
   --parameters infra/parameters/dev.bicepparam
+```
 
-# Optionally override Bing Search deployment for any environment
-az deployment group create `
-  --resource-group $RESOURCE_GROUP `
-  --template-file infra/main.bicep `
-  --parameters infra/parameters/dev.bicepparam `
-  --parameters deployBingSearch=true
+Capture useful outputs:
 
-# Capture outputs
-$OUTPUTS = az deployment group show `
-  --resource-group $RESOURCE_GROUP `
-  --name main `
-  --query properties.outputs `
+```bash
+$OUTPUTS = az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs \
   --output json | ConvertFrom-Json
 
 $ACR_LOGIN_SERVER = $OUTPUTS.acrLoginServer.value
 $FRONTEND_URL = $OUTPUTS.frontendUrl.value
 $BACKEND_URL = $OUTPUTS.backendUrl.value
-
-Write-Host "ACR Login Server: $ACR_LOGIN_SERVER"
-Write-Host "Frontend URL: $FRONTEND_URL"
-Write-Host "Backend URL: $BACKEND_URL"
+$PROJECT_ENDPOINT = $OUTPUTS.aiFoundryProjectEndpoint.value
 ```
 
-**Note**: Initial deployment takes ~10-15 minutes (OpenAI provisioning is the slowest).
+### Step 3: Build and push Docker images
 
-`deployBingSearch` controls whether the Bing Search module is deployed and whether the backend receives Bing Search secrets and environment variables. The dev parameter file disables Bing Search by default because some subscriptions do not have the `Microsoft.Bing` provider registered. The prod parameter file enables it by default.
-
-### Step 3: Build and Push Docker Images
-
-#### Backend Image
+#### Backend image
 
 ```bash
-# Navigate to repo root
 cd C:\repos\boston-code-camp-40
-
-# Login to ACR
 az acr login --name $ACR_LOGIN_SERVER.Split('.')[0]
 
-# Build and tag backend image
 docker build -t "${ACR_LOGIN_SERVER}/travel-agent-backend:0.1.0" .
-
-# Push to ACR
 docker push "${ACR_LOGIN_SERVER}/travel-agent-backend:0.1.0"
 ```
 
-#### Frontend Image
+#### Frontend image
 
 ```bash
-# Build and tag frontend image
-docker build -t "${ACR_LOGIN_SERVER}/travel-agent-frontend:0.1.0" ./frontend
-
-# Push to ACR
+docker build -t "${ACR_LOGIN_SERVER}/travel-agent-frontend:0.1.0" \
+  -f src/frontend/Dockerfile src/frontend/
 docker push "${ACR_LOGIN_SERVER}/travel-agent-frontend:0.1.0"
 ```
 
 ### Step 4: Update Container Apps
 
-After pushing images, the Container Apps will automatically pull and deploy:
+Container Apps pull from ACR using the user-assigned identity created
+for image pull access. No registry username or password is configured on
+the app module.
 
 ```bash
-# Check backend status
-az containerapp show `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-backend `
-  --query properties.runningStatus
-
-# Check frontend status
-az containerapp show `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-frontend `
-  --query properties.runningStatus
-```
-
-**If apps don't auto-update**, trigger a revision:
-
-```bash
-# Update backend
-az containerapp update `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-backend `
+az containerapp update \
+  --resource-group $RESOURCE_GROUP \
+  --name travel-agent-dev-backend \
   --image "${ACR_LOGIN_SERVER}/travel-agent-backend:0.1.0"
 
-# Update frontend
-az containerapp update `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-frontend `
-  --image "${ACR_LOGIN_SERVER}/travel-agent-frontend:0.1.0"
+az containerapp update \
+  --resource-group $RESOURCE_GROUP \
+  --name travel-agent-dev-frontend \
+  --image "${ACR_LOGIN_SERVER}/travel-agent-frontend:0.1.0" \
+  --set-env-vars "BACKEND_URL=$BACKEND_URL"
 ```
 
-### Step 5: Test the Deployment
+### Step 5: Test the deployment
 
 ```bash
-# Test backend health
-curl "$BACKEND_URL/health"
-
-# Open frontend in browser
+curl "$BACKEND_URL/api/health"
 Start-Process $FRONTEND_URL
 ```
 
@@ -251,172 +236,146 @@ Start-Process $FRONTEND_URL
 
 | Variable | Source | Type | Description |
 |----------|--------|------|-------------|
-| `AZURE_OPENAI_ENDPOINT` | OpenAI module output | Regular | Azure OpenAI endpoint URL |
-| `AZURE_OPENAI_API_KEY` | OpenAI module output | Secret | API key for OpenAI |
-| `AZURE_OPENAI_DEPLOYMENT` | OpenAI module output | Regular | Model deployment name (gpt-4o) |
-| `BING_SEARCH_ENDPOINT` | Bing module output | Regular | Bing Search API endpoint (only when `deployBingSearch = true`) |
-| `BING_SEARCH_API_KEY` | Bing module output | Secret | API key for Bing Search (only when `deployBingSearch = true`) |
-| `APP_VERSION` | Parameter | Regular | Application version tag |
+| `AZURE_AI_PROJECT_ENDPOINT` | `ai-foundry.bicep` output | Regular | Azure AI Foundry project endpoint (`services.ai.azure.com`) |
+| `AZURE_AI_MODEL_DEPLOYMENT_NAME` | `ai-foundry.bicep` output | Regular | Model deployment name used by `AzureAIClient` |
+| `APP_VERSION` | Deployment/pipeline input | Regular | Application version exposed by `/api/health` |
 
 ### Frontend Container App
 
 | Variable | Source | Type | Description |
 |----------|--------|------|-------------|
-| `BACKEND_URL` | Backend module output | Regular | Backend API URL for proxying |
+| `BACKEND_URL` | Backend app output | Regular | HTTPS backend base URL proxied by nginx |
+| `BACKEND_HOST` | Derived in `entrypoint.sh` | Runtime | Hostname extracted from `BACKEND_URL` for TLS SNI and `Host` header forwarding |
 
 ## Module Reference
 
 ### `modules/acr.bicep`
-Creates Azure Container Registry with admin user enabled.
+Creates Azure Container Registry with admin access disabled.
 
-**Parameters:**
-- `name`: Registry name (alphanumeric only)
-- `location`: Azure region
-- `skuName`: SKU tier (Basic/Standard/Premium)
-- `tags`: Resource tags
+**Key parameters:** `name`, `location`, `skuName`, `tags`
 
-**Outputs:**
-- `id`, `name`, `loginServer`, `adminUsername`, `adminPassword`
+**Outputs:** `id`, `name`, `loginServer`
 
 ### `modules/container-app-env.bicep`
-Creates Container Apps managed environment.
+Creates the shared Container Apps managed environment.
 
-**Parameters:**
-- `name`: Environment name
-- `location`: Azure region
-- `tags`: Resource tags
+**Key parameters:** `name`, `location`, `tags`
 
-**Outputs:**
-- `id`, `name`
+**Outputs:** `id`, `name`
 
 ### `modules/container-app.bicep`
-Reusable module for deploying container apps.
+Reusable module for frontend and backend Container Apps.
 
-**Parameters:**
-- `name`: App name
-- `environmentId`: Container Apps environment ID
-- `containerImage`: Docker image with tag
-- `targetPort`: Container port (80 or 8000)
-- `env`: Environment variable array
-- `secrets`: Secrets array
-- `registryServer`, `registryUsername`, `registryPassword`: ACR credentials
-- `cpu`, `memory`: Resource allocation
-- `minReplicas`, `maxReplicas`: Scaling configuration
+**Key parameters:**
+- `name`, `location`, `environmentId`, `targetPort`
+- `containerImage`, `env`, `secrets`
+- `registryServer`, `userAssignedIdentityId`
+- `cpu`, `memory`, `minReplicas`, `maxReplicas`, `tags`
 
-**Outputs:**
-- `id`, `name`, `fqdn`, `url`
+**Outputs:** `id`, `name`, `fqdn`, `url`, `principalId`
 
-### `modules/openai.bicep`
-Creates Azure OpenAI resource with GPT-4o deployment.
+**Notes:**
+- Assigns **both** system-assigned and user-assigned identities
+- Pulls container images from ACR via identity, not registry passwords
 
-**Parameters:**
-- `name`: OpenAI account name
-- `modelName`: AI model (default: gpt-4o)
-- `modelVersion`: Model version
-- `deploymentName`: Deployment name
-- `capacity`: TPM capacity (default: 10)
+### `modules/ai-foundry.bicep`
+Creates the Azure AI Services account, AI Foundry project, and model
+deployment in one module.
+
+**Key parameters:**
+- `name`, `location`, `projectName`, `tags`
+- `modelName`, `modelVersion`, `deploymentName`
+- `modelSkuName`, `capacity`
 
 **Outputs:**
-- `id`, `endpoint`, `key`, `deploymentName`
+- `id`, `name`, `endpoint`
+- `projectEndpoint`, `projectId`, `projectName`
+- `deploymentName`, `principalId`
+
+**Notes:**
+- Replaces the older separate OpenAI / hub / project / connection module
+  stack
+- Sets `disableLocalAuth: true` so runtime access goes through Azure
+  Identity
 
 ### `modules/bing-search.bicep`
-Creates Bing Search API resource (global location).
+Creates a Bing Search resource for optional search-backed scenarios.
 
-**Parameters:**
-- `name`: Resource name
-- `skuName`: SKU tier (S1-S9)
+**Key parameters:** `name`, `skuName`, `tags`
 
-**Outputs:**
-- `id`, `endpoint`, `key`
+**Outputs:** `id`, `endpoint`
 
-### `modules/ai-foundry-hub.bicep`
-Creates Azure AI Foundry Hub for AI resource management.
+### `modules/role-assignment.bicep`
+Reusable resource-group-scoped role assignment helper.
 
-**Parameters:**
-- `name`: Hub name
-- `location`: Azure region
-- `storageAccountId`: Optional storage account (auto-created if not provided)
-- `keyVaultId`: Optional key vault (auto-created if not provided)
-- `tags`: Resource tags
+**Key parameters:**
+- `principalId`, `roleDefinitionId`, `principalType`
+- `scopeSeed`, `roleDescription`, `enabled`
 
-**Outputs:**
-- `id`, `name`, `principalId`
+**Outputs:** `name`, `created`
 
-### `modules/ai-foundry-project.bicep`
-Creates Azure AI Foundry Project linked to a hub.
+**Notes:**
+- Uses a deterministic GUID so repeated deployments stay idempotent
+- Supports conditional creation with `enabled`
 
-**Parameters:**
-- `name`: Project name
-- `location`: Azure region
-- `hubId`: Parent hub resource ID
-- `tags`: Resource tags
+### `modules/acr-role-assignment.bicep`
+Reusable ACR-scoped role assignment helper.
 
-**Outputs:**
-- `id`, `name`, `principalId`
+**Key parameters:**
+- `principalId`, `roleDefinitionId`, `acrName`
+- `principalType`, `enabled`
 
-### `modules/ai-foundry-connection.bicep`
-Registers an Azure OpenAI connection in the AI Foundry Hub.
+**Outputs:** `created`
 
-**Parameters:**
-- `hubName`: Name of the parent hub
-- `connectionName`: Connection name
-- `openaiEndpoint`: Azure OpenAI endpoint URL
-- `openaiApiKey`: Azure OpenAI API key (secure)
-- `openaiResourceId`: OpenAI resource ID
-- `tags`: Resource tags
+## Parameter Files
 
-**Outputs:**
-- `id`, `name`
+Current parameter files live under `infra/parameters/`:
+
+- `dev.bicepparam`
+- `prod.bicepparam`
+
+These replace the older `main.parameters.*.json` files.
 
 ## Cost Estimates (Dev Tier)
 
-Approximate monthly costs for dev environment with minimal usage:
+Approximate monthly costs for a light dev environment:
 
 | Resource | SKU/Tier | Estimated Cost |
 |----------|----------|----------------|
-| Azure Container Apps | Consumption | $0-5 (pay per vCPU-second) |
+| Azure Container Apps | Consumption | $0-5 |
 | Azure Container Registry | Basic | $5 |
-| Azure OpenAI (GPT-4o) | Standard S0 | $5-50 (pay per token) |
-| Azure AI Foundry Hub | Standard | $0 (no base cost) |
-| Azure AI Foundry Project | Standard | $0 (no base cost) |
-| Bing Search API | S1 | $5-10 (pay per transaction) |
+| Azure AI Foundry / AI Services | S0 + GPT-4o usage | $5-50 |
+| Bing Search API | S1 | $5-10 |
 | **Total** | | **~$15-70/month** |
 
 **Notes:**
-- Container Apps scale to zero when idle (no cost)
-- OpenAI cost depends on token usage
-- Bing Search S1 tier: 1,000 transactions/month included
-- AI Foundry Hub/Project have no base cost; only underlying storage/key vault incur charges
-- Actual costs may vary based on usage patterns
+- Container Apps scale to zero when idle
+- AI Foundry usage is primarily model-consumption driven
+- Bing Search remains optional by environment and subscription support
 
 ## Production Deployment
 
-For production, use the prod parameter file and consider:
+For production, use `infra/parameters/prod.bicepparam` and consider:
 
-1. **Upgrade SKUs**:
-   - ACR: Standard or Premium for geo-replication
-   - Container Apps: Dedicated workload profiles for guaranteed resources
-
-2. **Security enhancements**:
-   - Disable ACR admin user, use managed identities
-   - Add virtual network integration
-   - Enable Azure Key Vault for secrets
-
-3. **Monitoring**:
-   - Enable Application Insights
-   - Configure alerts for errors/latency
-   - Set up log analytics workspace
-
-4. **High availability**:
-   - Deploy to multiple regions
-   - Use Azure Front Door for global load balancing
+1. **Capacity and scale**
+   - Increase Container Apps limits and replica counts as needed
+   - Adjust AI deployment capacity for expected request volume
+2. **Security**
+   - Keep ACR admin disabled (already the default)
+   - Add private networking or ingress restrictions where required
+   - Review RBAC assignments and disable creation once stabilized
+3. **Observability**
+   - Add or extend Azure Monitor / Log Analytics integration
+   - Configure alerts for latency, failed revisions, and deployment drift
+4. **Availability**
+   - Consider multi-region patterns and global routing when needed
 
 Deploy production:
 
 ```bash
-az deployment group create `
-  --resource-group rg-travel-agent-prod `
-  --template-file infra/main.bicep `
+az deployment group create \
+  --resource-group rg-travel-agent-prod \
+  --template-file infra/main.bicep \
   --parameters infra/parameters/prod.bicepparam
 ```
 
@@ -425,35 +384,39 @@ az deployment group create `
 ### Issue: Container App not starting
 
 ```bash
-# View logs
-az containerapp logs show `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-backend `
+az containerapp logs show \
+  --resource-group $RESOURCE_GROUP \
+  --name travel-agent-dev-backend \
   --follow
 ```
 
-### Issue: ACR authentication fails
+### Issue: ACR pull fails
+
+Check that the user-assigned identity has `AcrPull` on the registry and
+that the Container App is configured with the expected identity:
 
 ```bash
-# Re-login to ACR
-az acr login --name <registry-name>
-
-# Verify credentials
-az acr credential show --name <registry-name>
+az role assignment list \
+  --scope $(az acr show -n <acr-name> --query id -o tsv) \
+  --assignee <principal-id> \
+  --output table
 ```
 
-### Issue: OpenAI quota errors
+### Issue: Backend cannot call Azure AI Foundry
 
-Check quota availability in your subscription:
+Verify the backend system-assigned identity has the **Azure AI User**
+role on the resource group and confirm the project endpoint value:
+
 ```bash
-az cognitiveservices account list-usage `
-  --resource-group $RESOURCE_GROUP `
-  --name travel-agent-dev-openai
+az role assignment list \
+  --resource-group $RESOURCE_GROUP \
+  --assignee <backend-principal-id> \
+  --output table
 ```
 
 ## Cleanup
 
-To delete all resources:
+To remove the environment:
 
 ```bash
 az group delete --name $RESOURCE_GROUP --yes --no-wait
@@ -462,7 +425,7 @@ az group delete --name $RESOURCE_GROUP --yes --no-wait
 ## Additional Resources
 
 - [Azure Container Apps Documentation](https://learn.microsoft.com/en-us/azure/container-apps/)
-- [Azure OpenAI Service](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
+- [Azure AI Foundry Documentation](https://learn.microsoft.com/en-us/azure/ai-foundry/)
 - [Bicep Language Reference](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/)
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
 
@@ -470,5 +433,5 @@ az group delete --name $RESOURCE_GROUP --yes --no-wait
 
 For issues or questions:
 - Check Azure Portal for resource status
-- Review Container Apps logs
+- Review Container Apps logs and deployment outputs
 - Consult the team Copilot space for architecture decisions

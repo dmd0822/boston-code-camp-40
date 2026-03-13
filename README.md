@@ -2,118 +2,127 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build, Test & Deploy](https://github.com/dmd0822/boston-code-camp-40/actions/workflows/deploy-app-dev.yml/badge.svg)](https://github.com/dmd0822/boston-code-camp-40/actions/workflows/deploy-app-dev.yml)
-![Backend Tests](https://img.shields.io/badge/backend_tests-228_passing-brightgreen)
+![Backend Tests](https://img.shields.io/badge/backend_tests-123_passing-brightgreen)
 ![Frontend Tests](https://img.shields.io/badge/frontend_tests-66_passing-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-294_passing-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-242_passing-brightgreen)
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
-A FastAPI backend application that orchestrates four specialized AI agents (General, POI, Event, Weather) to create comprehensive travel itineraries. Each agent is grounded in Bing Web Search to ensure factual accuracy. The application is built with Microsoft Agent Framework and deployed on Azure Container Apps.
+A FastAPI backend orchestrates four specialized travel agents (General,
+POI, Event, Weather) to build grounded itineraries end-to-end. The app
+uses Microsoft Agent Framework with Azure AI Foundry Agent Service,
+authenticates through `DefaultAzureCredential`, ships with a React
+frontend in `src/frontend/`, and deploys to Azure Container Apps with
+Bicep and GitHub Actions.
 
-**Status:** ✅ **Phase 5 Complete + AI Foundry** — Full backend + frontend + infrastructure with Azure AI Foundry governance. All 281 tests passing (107 backend + 108 infra + 66 frontend).
+**Status:** ✅ **All Phases Complete** — The application works end-to-end
+locally and in Azure, with managed identity authentication, CI/CD, and a
+current validation snapshot of 242 passing tests and 4 skipped Docker
+checks.
 
 ## Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **AI Agents** | Microsoft Agent Framework (`agent-framework`) | Define agents, tools, and reasoning |
-| **LLM** | Azure OpenAI (GPT-4o) | Reasoning engine for agents |
-| **Web Grounding** | Bing Web Search API | Mandatory search-first pattern for all agents |
+| **AI Agents** | Microsoft Agent Framework (`agent-framework`, `agent-framework-azure-ai`) | Define agent behavior, tools, and orchestration |
+| **Agent Runtime** | Azure AI Foundry Agent Service (`AzureAIClient`) | Server-side agent execution against the project endpoint |
+| **Authentication** | Azure Identity `DefaultAzureCredential` | `az login` locally, managed identity in Azure Container Apps |
+| **Web Grounding** | Bing Web Search API | Search-first grounding pattern for itinerary recommendations |
 | **HTTP API** | FastAPI + Uvicorn | Async REST backend |
-| **Config** | Pydantic Settings + `python-dotenv` | Environment-based config (no hard-coded secrets) |
-| **Testing** | pytest | Unit & integration tests |
-| **Frontend** | React 18 + Vite + TypeScript | Complete SPA: CustomerForm, ItineraryView, components, hooks, API client (204 KB JS, 64 KB gzipped) |
-| **Containers** | Docker | Production-ready Dockerfiles (Python 3.12-slim backend, multi-stage node+nginx frontend) |
-| **Infrastructure** | Azure Bicep | IaC: 8 modules (container-app-env, container-app, acr, openai, bing-search, ai-foundry-hub, ai-foundry-project, ai-foundry-connection) + main.bicep orchestration |
-| **AI Governance** | Azure AI Foundry | Hub and project for centralized AI resource management and monitoring |
-| **Language** | Python 3.x | Backend runtime (3.12-slim in container) |
+| **Config** | Pydantic Settings + `python-dotenv` | Environment-based configuration without hard-coded secrets |
+| **Frontend** | React 19 + Vite + TypeScript | SPA with customer form, itinerary view, hooks, and API client |
+| **Containers** | Docker + nginx | Backend Python container plus frontend multi-stage Node/nginx image |
+| **Infrastructure** | Azure Bicep | `main.bicep` plus 7 reusable modules for ACR, Container Apps, AI Foundry, Bing, and RBAC |
+| **CI/CD** | GitHub Actions + Azure OIDC | Build, test, badge update, image push, infra deploy, and app deploy |
+| **Testing** | pytest + Vitest | Backend, infrastructure, and frontend validation |
+| **Language** | Python 3.12 + TypeScript | Backend and frontend runtimes |
 
 ## System Architecture
 
 ```
 ┌────────────────────────────────────────┐
-│      React Frontend (Vite + TS)        │
-│  User form → customer profile submit   │
+│     React Frontend (Vite + nginx)      │
+│ User form → submit profile → view trip │
 └──────────────────┬─────────────────────┘
-                   │ HTTPS POST
+                   │ HTTPS /api/*
                    ▼
 ┌────────────────────────────────────────┐
-│    FastAPI Backend (Python)            │
+│     FastAPI Backend (Python)           │
 │                                        │
-│  POST /api/itinerary                   │
-│  ├─ Orchestrator Service               │
-│  │  ├─ Phase 1: General Agent          │
-│  │  │  (destination matching)          │
-│  │  └─ Phase 2: Concurrent fan-out     │
-│  │     ├─ POI Agent                    │
-│  │     ├─ Event Agent                  │
-│  │     └─ Weather Agent                │
-│  └─ Return aggregated itinerary        │
+│ POST /api/itinerary                    │
+│ ├─ General Agent                       │
+│ ├─ POI Agent                           │
+│ ├─ Event Agent                         │
+│ ├─ Weather Agent                       │
+│ └─ Travel Orchestrator                 │
 │                                        │
-│  GET /api/health                       │
-│  └─ Liveness check                     │
-└──────────────────┬─────────────────────┘
-                   │
-      ┌────────────┴────────────┐
-      ▼                         ▼
-┌──────────────────┐  ┌──────────────────┐
-│ Azure OpenAI     │  │ Bing Web Search  │
-│ (GPT-4o)         │  │ (grounding tool) │
-└──────────────────┘  └──────────────────┘
+│ GET /api/health                        │
+└──────────────┬───────────────┬─────────┘
+               │               │
+               ▼               ▼
+┌──────────────────────┐  ┌──────────────────────┐
+│ Azure AI Foundry     │  │ Bing Web Search API  │
+│ Agent Service        │  │ Grounding source     │
+│ GPT-4o deployment    │  │ for agent research   │
+└──────────────────────┘  └──────────────────────┘
 ```
 
 **Key Principles:**
-- **Explicit boundaries:** Each agent has defined inputs/outputs and a system prompt.
-- **Grounding mandatory:** All agents search first, then reason over results (no hallucination).
-- **Orchestration as code:** Deterministic Python flow, not LLM-driven routing.
-- **Async-native:** FastAPI handles concurrent agent calls efficiently.
+- **Explicit boundaries:** Each agent has a defined role, prompt, and
+  output contract.
+- **Grounding mandatory:** Agents search first and reason over grounded
+  results.
+- **Orchestration as code:** Deterministic Python coordinates the full
+  itinerary flow.
+- **Managed identity first:** Local development uses Azure CLI auth;
+  deployed apps use managed identities.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.10+ (backend)
-- Node.js 18+ and npm (frontend)
-- An Azure subscription (Azure OpenAI, Bing Web Search)
+- Python 3.10+ for the backend
+- Node.js 18+ and npm for the frontend
+- Azure CLI with access to your Azure subscription
 - Git
 
 ### Quick Start
 
-#### 1. Clone repository and setup backend
+#### 1. Clone the repository and set up the backend
 
 ```bash
 git clone <repo-url>
 cd boston-code-camp-40
 
-# Create virtual environment
 python -m venv .venv
 
-# Activate it
-# Windows:
+# Windows
 .\.venv\Scripts\Activate.ps1
-# macOS/Linux:
+
+# macOS/Linux
 source .venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-#### 2. Configure environment
+#### 2. Authenticate and configure the environment
 
 ```bash
-# Copy template and fill in your Azure credentials
+az login
 cp .env.template .env
 ```
 
-Edit `.env` with:
+Edit `.env` with the current runtime variables:
+
 ```
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-BING_SEARCH_API_KEY=your-bing-key
-BING_SEARCH_ENDPOINT=https://api.bing.microsoft.com/
+AZURE_AI_PROJECT_ENDPOINT=https://your-resource.services.ai.azure.com/api/projects/your-project
+AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-4o
 APP_VERSION=0.1.0
 ```
+
+No Azure AI or Bing API keys are required. Locally,
+`DefaultAzureCredential` uses your Azure CLI session. In Azure, the
+backend uses the Container App's system-assigned managed identity.
 
 #### 3. Start the backend server
 
@@ -121,17 +130,18 @@ APP_VERSION=0.1.0
 python entrypoints/serve.py
 ```
 
-Backend runs on `http://localhost:8000`
+Backend runs on `http://localhost:8000`.
 
-#### 4. Setup and run the frontend
+#### 4. Set up and run the frontend
 
 ```bash
-cd frontend
+cd src/frontend
 npm install
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173` (Vite proxy routes `/api/*` → backend)
+Frontend runs on `http://localhost:5173` and proxies `/api/*` to the
+backend during development.
 
 #### 5. Test the API
 
@@ -139,7 +149,7 @@ Frontend runs on `http://localhost:5173` (Vite proxy routes `/api/*` → backend
 # Health check
 curl http://localhost:8000/api/health
 
-# Build an itinerary (example)
+# Build an itinerary
 curl -X POST http://localhost:8000/api/itinerary \
   -H "Content-Type: application/json" \
   -d '{
@@ -155,98 +165,80 @@ curl -X POST http://localhost:8000/api/itinerary \
 
 ```
 boston-code-camp-40/
-├── README.md                  # This file
-├── LICENSE                    # MIT License
-├── requirements.txt           # Python dependencies (backend)
-├── Dockerfile                 # Backend container (Python 3.12-slim, 4 Uvicorn workers)
-├── .env.template              # Environment variables template
-├── pytest.ini                 # Pytest configuration
+├── README.md                     # This file
+├── LICENSE                       # MIT License
+├── requirements.txt              # Python dependencies
+├── Dockerfile                    # Backend container image
+├── .env.template                 # Local environment template
+├── pytest.ini                    # Pytest configuration
+├── .github/
+│   └── workflows/
+│       ├── deploy-app-dev.yml    # Build, test, badge update, image push, deploy
+│       └── deploy-infra-dev.yml  # Validate and deploy Azure infrastructure
 │
-├── frontend/                  # React + TypeScript frontend (Phase 4) ✅
-│   ├── src/
-│   │   ├── api/               # API client (itineraryApi.ts)
-│   │   ├── components/        # 5 React components (Form, View, Cards, Loading, Error)
-│   │   ├── hooks/             # useItinerary custom hook (state machine)
-│   │   ├── types/             # TypeScript type definitions (mirrored from backend)
-│   │   ├── App.tsx            # Main app component
-│   │   └── main.tsx           # Entry point
-│   ├── Dockerfile             # Multi-stage frontend container (node + nginx)
-│   ├── nginx.conf             # SPA routing, /api proxy, gzip compression
-│   ├── package.json           # npm dependencies & scripts
-│   ├── vite.config.ts         # Vite build config (includes /api proxy)
-│   ├── tsconfig.json          # TypeScript config
-│   └── README.md              # Frontend setup & architecture
+├── src/
+│   ├── agents/                   # AI agent implementations and tools
+│   ├── api/                      # FastAPI application and models
+│   ├── config/                   # Settings and environment loading
+│   ├── frontend/                 # React + TypeScript frontend
+│   │   ├── src/                  # Components, hooks, API client, types
+│   │   ├── Dockerfile            # Frontend container image
+│   │   ├── entrypoint.sh         # envsubst startup for nginx config
+│   │   ├── nginx.conf.template   # Runtime proxy template
+│   │   ├── package.json          # Frontend scripts and deps
+│   │   └── README.md             # Frontend setup and architecture
+│   ├── orchestrator/             # Travel orchestration flow
+│   ├── pipelines/                # Template-preserved reusable code
+│   └── README.md                 # Backend folder overview
 │
-├── src/                       # Production code (backend)
-│   ├── agents/                # AI agent implementations (4 agents: General, POI, Event, Weather)
-│   │   ├── general_agent.py   # Destination matching agent
-│   │   ├── poi_agent.py       # Points of interest agent
-│   │   ├── event_agent.py     # Events/festivals agent
-│   │   ├── weather_agent.py   # Historical weather agent
-│   │   └── tools/             # Shared tools (e.g., web_search.py)
-│   ├── api/                   # FastAPI application
-│   │   ├── app.py             # App factory
-│   │   ├── routes/            # API endpoints (/itinerary, /health)
-│   │   └── models/            # Pydantic schemas (CustomerProfile, Itinerary)
-│   ├── orchestrator/          # Orchestration logic (two-phase flow)
-│   │   └── travel_orchestrator.py
-│   ├── config/                # App configuration (Pydantic Settings)
-│   │   └── settings.py
-│   └── README.md              # src/ documentation
-│
-├── entrypoints/               # Runnable scripts
-│   ├── serve.py               # Start the FastAPI server on port 8000
+├── entrypoints/                  # Runnable scripts
+│   ├── serve.py                  # Start the backend server
 │   └── README.md
 │
-├── tests/                     # Automated tests (pytest)
-│   ├── unit/                  # Unit tests for agents, API models
-│   ├── integration/           # Integration tests for orchestrator
-│   ├── fixtures/              # Test fixtures and mock data
-│   ├── conftest.py            # Pytest configuration
+├── tests/                        # Automated tests
+│   ├── unit/                     # Backend unit tests
+│   ├── integration/              # Backend integration tests
+│   ├── infra/                    # Infrastructure validation tests
+│   ├── fixtures/                 # Shared fixtures and mock data
 │   └── README.md
 │
-├── config/                    # Configuration files
-│   └── README.md
-│
-├── data/                      # Data & artifacts
-│   ├── prompts/               # Agent system prompts (Markdown)
-│   │   ├── general/system.md
-│   │   ├── poi/system.md
-│   │   ├── event/system.md
-│   │   └── weather/system.md
-│   ├── 01-raw/                # Raw input data (unused in MVP)
-│   ├── 02-preprocessed/       # Preprocessed data (unused in MVP)
-│   ├── 03-features/           # Feature data (unused in MVP)
-│   └── 04-predictions/        # Predictions (unused in MVP)
-│
-├── infra/                     # Infrastructure as Code (Phase 5) ✅
-│   ├── main.bicep             # Main deployment template (orchestrates 6 Azure resources)
-│   ├── modules/               # 5 Bicep modules
+├── infra/                        # Azure infrastructure as code
+│   ├── main.bicep                # Orchestrates shared Azure resources
+│   ├── modules/                  # 7 reusable Bicep modules
+│   │   ├── acr.bicep
+│   │   ├── acr-role-assignment.bicep
+│   │   ├── ai-foundry.bicep
+│   │   ├── bing-search.bicep
 │   │   ├── container-app-env.bicep
 │   │   ├── container-app.bicep
-│   │   ├── acr.bicep
-│   │   ├── openai.bicep
-│   │   └── bing-search.bicep
-│   ├── main.parameters.dev.json    # Dev parameter file
-│   ├── main.parameters.prod.json   # Prod parameter file
-│   ├── README.md              # Full deployment guide & validation tests
-│   └── tests/                 # 74 infra validation tests (+ 4 Docker skipped without Docker)
+│   │   └── role-assignment.bicep
+│   ├── parameters/
+│   │   ├── dev.bicepparam
+│   │   └── prod.bicepparam
+│   ├── environments.json         # Environment naming and location config
+│   └── README.md                 # Deployment guide and module reference
 │
-├── notebooks/                 # EDA & exploration (not production code)
-└── reports/                   # Generated reports and outputs
+├── config/                       # Configuration documentation
+├── data/                         # Prompts and data artifacts
+├── docs/                         # Architecture and diagrams
+├── notebooks/                    # Exploration notebooks
+└── reports/                      # Generated outputs
 ```
 
 **Key folders documented separately:**
-- [frontend/README.md](frontend/README.md) — Frontend React setup, components, and architecture
+- [src/frontend/README.md](src/frontend/README.md) — Frontend setup,
+  components, testing, and deployment runtime
 - [src/README.md](src/README.md) — Backend code organization
 - [src/agents/README.md](src/agents/README.md) — AI agents and tools
-- [src/pipelines/README.md](src/pipelines/README.md) — Reusable pipeline code (note: currently unused in MVP)
-- [entrypoints/README.md](entrypoints/README.md) — Entry points and server startup
-- [tests/README.md](tests/README.md) — Testing strategy and structure (backend + frontend)
+- [src/pipelines/README.md](src/pipelines/README.md) — Reusable pipeline
+  code preserved from the template
+- [entrypoints/README.md](entrypoints/README.md) — Entry points and
+  server startup
+- [tests/README.md](tests/README.md) — Testing strategy and coverage
 - [config/README.md](config/README.md) — Configuration management
 - [data/README.md](data/README.md) — Data staging and prompt artifacts
 - [data/prompts/README.md](data/prompts/README.md) — Agent system prompts
-- [infra/README.md](infra/README.md) — Infrastructure templates (Bicep)
+- [infra/README.md](infra/README.md) — Azure infrastructure templates
 
 ## API Endpoints
 
@@ -274,9 +266,9 @@ Build a personalized travel itinerary.
       "destination": "Banff, Canada",
       "description": "...",
       "source_url": "...",
-      "pois": [...],
-      "events": [...],
-      "weather_forecast": {...}
+      "pois": [],
+      "events": [],
+      "weather_forecast": {}
     }
   ]
 }
@@ -286,43 +278,46 @@ Build a personalized travel itinerary.
 
 Liveness check.
 
-**Response:** `{"status": "ok"}`
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0"
+}
+```
 
 ## Running Tests
 
-### Backend Tests (107 passing)
+### Backend Tests (123 passing)
 
 ```bash
-# Run all backend tests
-pytest
+# Run backend unit + integration tests
+pytest tests/unit tests/integration
 
 # Run with coverage
-pytest --cov=src --cov-report=html
+pytest tests/unit tests/integration --cov=src --cov-report=html
 
-# Run specific test file
-pytest tests/unit/test_general_agent.py
+# Run a specific backend test file
+pytest tests/unit/agents/test_general_agent.py
 
-# Run with verbose output
-pytest -v
+# Verbose output
+pytest tests/unit tests/integration -v
 ```
 
-### Infrastructure Tests (74 passing, 4 Docker build skipped)
+### Infrastructure Tests (109 passing, 4 Docker build checks skipped without Docker daemon)
 
 ```bash
-# Run all infra tests
-pytest infra/tests/
+# Run all infrastructure validation tests
+pytest tests/infra/
 
-# Run without Docker build tests
-pytest infra/tests/ -m "not docker_build"
-
-# Run with coverage
-pytest infra/tests/ --cov=infra --cov-report=html
+# Skip Docker build validation checks
+pytest tests/infra/ -m "not docker_build"
 ```
 
 ### Frontend Tests (66 passing)
 
 ```bash
-cd frontend
+cd src/frontend
 
 # Run all frontend tests
 npm run test
@@ -331,40 +326,69 @@ npm run test
 npm run test -- --coverage
 
 # Watch mode
-npm run test -- --watch
+npm run test:watch
 ```
 
-See [tests/README.md](tests/README.md) for test structure and coverage details.
+**Current validation snapshot:** 242 passing, 4 skipped.
 
-**Total: 247 tests passing (107 backend + 74 infrastructure + 66 frontend)**
+See [tests/README.md](tests/README.md) for detailed coverage notes.
 
+## Infrastructure ✅
 
-## Infrastructure (Phase 5) ✅
+The application is fully containerized and deploys to Azure Container
+Apps with Bicep and managed identities.
 
-The application is fully containerized and deployed on Azure Container Apps via Bicep infrastructure-as-code.
+### Infrastructure modules (7 total)
 
-### Containerization
+- `acr.bicep` — Azure Container Registry with `adminUserEnabled: false`
+- `container-app-env.bicep` — Shared Container Apps environment
+- `container-app.bicep` — Reusable container app module with
+  system-assigned + user-assigned identity support and registry pulls via
+  identity instead of passwords
+- `ai-foundry.bicep` — Combined AI Services account, AI Foundry project,
+  and GPT-4o deployment
+- `bing-search.bicep` — Bing Search resource module for search-backed
+  scenarios
+- `role-assignment.bicep` — Resource-group-scoped RBAC assignments with
+  deterministic GUIDs and an `enabled` switch
+- `acr-role-assignment.bicep` — ACR-scoped RBAC assignments for image
+  pull permissions
 
-**Backend Docker** (`Dockerfile`):
-- Base: `python:3.12-slim`
-- Uvicorn with 4 workers for production workloads
-- Health check endpoint enabled
-- Non-root user for security
+### Deployment notes
 
-**Frontend Docker** (`frontend/Dockerfile`):
-- Multi-stage build: Node 20 builder → nginx runtime
-- nginx.conf handles SPA routing, `/api/*` proxy to backend, gzip compression
-- Build: 204 KB JS (64 KB gzipped), 7.8 KB CSS
+- Parameter files live in `infra/parameters/dev.bicepparam` and
+  `infra/parameters/prod.bicepparam`
+- Backend runtime configuration uses only:
+  `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and
+  `APP_VERSION`
+- Backend authentication uses `DefaultAzureCredential`
+  (`az login` locally, system-assigned managed identity in Azure)
+- The backend managed identity receives the **Azure AI User** role at
+  resource-group scope so it can call Azure AI Foundry Agent Service
+- Frontend container startup uses `src/frontend/nginx.conf.template` and
+  `src/frontend/entrypoint.sh` to inject `BACKEND_URL` and `BACKEND_HOST`
+  via `envsubst`, with `proxy_ssl_server_name on` for TLS proxying
 
-### Azure Deployment
+For deployment details, see [infra/README.md](infra/README.md).
 
-**Bicep Infrastructure:**
-- **8 Modular Templates** — container-app-env, container-app, acr (Azure Container Registry), openai, bing-search, ai-foundry-hub, ai-foundry-project, ai-foundry-connection
-- **main.bicep** — Orchestrates all 9 Azure resources with full secret wiring and AI Foundry governance layer
-- **Parameter Files** — Separate dev/prod configurations
-- **74 Validation Tests** — Infrastructure validation (+ 4 Docker build tests)
+## CI/CD
 
-**Deployment Guide:** See [infra/README.md](infra/README.md) for step-by-step instructions.
+Two GitHub Actions workflows keep the dev environment current:
+
+- **`deploy-infra-dev.yml`** — Deploy Infrastructure
+  - Triggers on `infra/**` changes or manual dispatch
+  - Loads environment config, validates Bicep, runs What-If, and deploys
+    to Azure
+- **`deploy-app-dev.yml`** — Build, Test & Deploy
+  - Triggers on `src/**` changes, successful infra workflow completion,
+    or manual dispatch
+  - Runs 5 jobs: `load-config` → `test-backend` + `test-frontend`
+    (parallel) → `update-readme` → `build` → `deploy`
+  - Builds backend and frontend images, pushes to ACR, updates Container
+    Apps, and refreshes README badge counts
+
+Both workflows use Azure OIDC / federated credentials for deployment,
+not long-lived deployment secrets.
 
 ## Development
 
@@ -372,26 +396,29 @@ The application is fully containerized and deployed on Azure Container Apps via 
 
 Python code follows:
 - PEP 8 formatting
-- Type hints via 	yping module
-- PEP 257 docstrings for public functions/classes
+- Type hints via the `typing` module
+- PEP 257 docstrings for public functions and classes
 - Clear, composable functions with intent-driven names
 
 ### Architecture Decisions
 
 All significant architectural decisions are documented in:
-- **[docs/architecture.md](docs/architecture.md)** — Single source of truth for system design
-- **[docs/diagrams.md](docs/diagrams.md)** — Visual architecture diagrams (Mermaid)
-- **[.squad/decisions.md](.squad/decisions.md)** — Team decisions and approvals
+- **[docs/architecture.md](docs/architecture.md)** — Single source of
+  truth for system design
+- **[docs/diagrams.md](docs/diagrams.md)** — Visual architecture diagrams
+- **[.squad/decisions.md](.squad/decisions.md)** — Team decisions and
+  approvals
 
-**For developers:** Read docs/architecture.md before making changes that affect agent flow, API contracts, or deployment patterns.
+Read `docs/architecture.md` before making changes that affect agent
+flow, API contracts, authentication, or deployment patterns.
 
 ### Contributing
 
-1. Create a feature branch: git checkout -b feature/your-feature
+1. Create a feature branch: `git checkout -b feature/your-feature`
 2. Make changes and add tests
-3. Run tests locally: pytest
+3. Run the relevant local validation
 4. Push and open a pull request
-5. All PRs must pass CI and code review
+5. Ensure CI passes before merging
 
 ## License
 

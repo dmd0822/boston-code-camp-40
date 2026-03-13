@@ -1,161 +1,140 @@
 # Tests — Automated Testing (Backend + Frontend)
 
-This folder contains all automated tests for the Travel Agent backend. Frontend tests are in `frontend/` (see below).
+This folder contains the Python-based automated tests for the Travel
+Agent backend and infrastructure. Frontend tests live in `src/frontend/`
+and run with Vitest.
 
 ## Folder Structure
 
 ```
 tests/
-├── conftest.py              # Pytest configuration and shared fixtures
-├── fixtures/                # Test data and mock objects
-│   ├── sample_customers.py  # Sample customer profiles
-│   ├── sample_responses.py  # Sample API responses
-│   └── mock_agents.py       # Mock agent implementations
-├── unit/                    # Unit tests (test individual components)
-│   ├── agents/              # Tests for agent logic
-│   ├── api/                 # Tests for API models and routes
-│   └── config/              # Tests for configuration loading
-└── integration/             # Integration tests (test full flows)
-    ├── test_orchestrator.py # Two-phase orchestration flow
-    └── test_api_endpoints.py # API endpoint integration tests
+├── conftest.py                # Pytest configuration and shared fixtures
+├── fixtures/                  # Test data and mock objects
+│   ├── sample_customers.py    # Sample customer profiles
+│   ├── sample_responses.py    # Sample API responses
+│   └── mock_agents.py         # Mock agent implementations
+├── infra/                     # Infrastructure validation tests
+│   ├── test_bicep.py          # Bicep template and parameter validation
+│   ├── test_dockerfiles.py    # Dockerfile structure checks
+│   └── test_docker_build.py   # Docker build checks (skipped without Docker)
+├── integration/               # Backend integration tests
+│   ├── test_api_endpoints.py  # API endpoint integration tests
+│   └── test_orchestrator.py   # Full orchestration flow
+└── unit/                      # Backend unit tests
+    ├── agents/                # Agent behavior and factory tests
+    ├── api/                   # API models and route tests
+    └── config/                # Settings and config loading tests
 ```
+
+## Current Test Snapshot
+
+- **Backend:** 123 passing tests
+- **Infrastructure:** 109 passing checks
+- **Frontend:** 66 passing tests in `src/frontend/`
+- **Local validation snapshot:** 242 passed, 4 skipped
+
+The skipped checks are the Docker build validations that require a local
+Docker daemon.
 
 ## Running Tests
 
-**Run all tests:**
-```bash
-pytest
-```
+### Backend
 
-**Run with coverage:**
 ```bash
-pytest --cov=src --cov-report=html
-```
-
-**Run specific test file:**
-```bash
+pytest tests/unit tests/integration
+pytest tests/unit tests/integration --cov=src --cov-report=html
 pytest tests/unit/agents/test_general_agent.py
+pytest tests/unit tests/integration -v
 ```
 
-**Run with verbose output:**
+### Infrastructure
+
 ```bash
-pytest -v
+pytest tests/infra/
+pytest tests/infra/ -m "not docker_build"
 ```
 
-**Run only unit tests:**
+### Frontend
+
 ```bash
-pytest tests/unit/
+cd src/frontend
+npm run test
+npm run test -- --coverage
+npm run test:watch
 ```
 
-**Run only integration tests:**
-```bash
-pytest tests/integration/
-```
+## Coverage Details
 
-## Test Coverage
+### Backend Coverage (123 passing)
 
-### Backend Tests (107 passing)
+Current backend coverage includes:
+- ✅ Agent factories and Azure AI client setup
+- ✅ API models and request validation
+- ✅ API routes and health endpoint behavior
+- ✅ Travel orchestrator fan-out / fan-in flow
+- ✅ Configuration loading via Pydantic Settings
+- ✅ Web search tool behavior and failure handling
 
-Current Phase 1–3 coverage:
-- ✅ API models (CustomerProfile, Itinerary)
-- ✅ Orchestrator initialization and two-phase flow
-- ✅ Agent factory patterns and system prompt loading
-- ✅ Bing Web Search tool integration
-- ✅ Full orchestration flow (General Agent → POI/Event/Weather fan-out)
-- ✅ API endpoint integration tests
+### Infrastructure Coverage (109 passing, 4 skipped without Docker)
 
-### Infrastructure Tests (74 passing, 4 Docker build tests skipped)
+Current infrastructure coverage includes:
+- ✅ Bicep module validation and template structure
+- ✅ Parameter file validation for `infra/parameters/*.bicepparam`
+- ✅ Managed identity and RBAC wiring assertions
+- ✅ Dockerfile validation for backend and frontend containers
+- ⊘ Docker image build checks when Docker is unavailable
 
-Phase 5 coverage:
-- ✅ Bicep template validation (all 5 modules)
-- ✅ Azure resource declarations (Container Apps, ACR, OpenAI, Bing Search)
-- ✅ Parameter file syntax and schema
-- ✅ Secret wiring and environment variables
-- ✅ Dev/prod configuration separation
-- ⊘ Docker build tests (skipped without Docker daemon)
+### Frontend Coverage (66 passing)
 
-To run infra tests:
-```bash
-pytest infra/tests/               # All tests
-pytest infra/tests/ -m "not docker_build"  # Exclude Docker build tests
-```
-
-### Frontend Tests (66 passing)
-
-Located in `frontend/` with 8 test files:
-- ✅ Component rendering tests (CustomerForm, ItineraryView, DestinationCard, LoadingState, ErrorState)
-- ✅ useItinerary hook state machine tests (idle → loading → success/error transitions)
-- ✅ API client tests (createItinerary, getHealth)
+Frontend tests live in `src/frontend/` and cover:
+- ✅ Component rendering and user interaction flows
+- ✅ `useItinerary` hook state transitions
+- ✅ API client behavior for itinerary and health requests
 - ✅ Form validation and error handling
-- ✅ Accessibility tests (ARIA labels, keyboard navigation)
-
-To run frontend tests:
-```bash
-cd frontend
-npm run test                    # Run all tests
-npm run test -- --coverage     # With coverage report
-npm run test -- --watch        # Watch mode
-```
-
-**Total: 247 tests passing (107 backend + 74 infrastructure + 66 frontend)**
+- ✅ Accessibility expectations and keyboard navigation
 
 ## What to Test
 
-- **API Contracts:** Request/response schemas are valid Pydantic models
-- **Orchestration Flow:** General → POI/Event/Weather fan-out works correctly
-- **Agent Initialization:** Agents load system prompts and tools correctly
-- **Configuration:** Environment variables are loaded and validated
-- **Edge Cases:** Empty inputs, missing fields, invalid data types
+- **API contracts:** Request and response schemas remain stable
+- **Orchestration flow:** General → POI / Event / Weather fan-out works
+- **Agent initialization:** Foundry client creation and prompt loading
+- **Configuration:** Required environment variables are validated
+- **Infrastructure:** Bicep modules, parameter files, Dockerfiles, and
+  RBAC wiring stay correct
+- **Frontend UX:** Form submission, loading, success, and error states
 
 ## Fixtures
 
-Common test fixtures in 	ests/conftest.py and 	ests/fixtures/:
+Common fixtures live in `tests/conftest.py` and `tests/fixtures/`:
 
-- sample_customer_profile — Valid CustomerProfile object
-- mock_general_agent — Mock General Agent
-- mock_orchestrator — Mock travel orchestrator
-- mock_api_client — Test HTTP client for API
+- `sample_customer_profile` — Valid `CustomerProfile`
+- `mock_general_agent` — Mock General Agent
+- `mock_orchestrator` — Mock travel orchestrator
+- `mock_api_client` — Test HTTP client for API routes
 
-Use these in your tests to avoid duplication.
+Use these fixtures to keep tests concise and consistent.
 
 ## Test Organization
 
-Tests mirror the source structure:
+Tests mirror the source layout:
 
-- Tests for src/agents/ → 	ests/unit/agents/
-- Tests for src/api/ → 	ests/unit/api/
-- Tests for src/orchestrator/ → 	ests/integration/
-
-## Key Patterns
-
-**Unit test example:**
-```python
-def test_customer_profile_validation():
-    profile = CustomerProfile(
-        name="Alice",
-        interests=["hiking"],
-        budget="moderate",
-        trip_duration=7,
-        travel_style="adventurous"
-    )
-    assert profile.name == "Alice"
-```
-
-**Integration test example:**
-```python
-@pytest.mark.asyncio
-async def test_orchestration_flow(mock_orchestrator):
-    result = await mock_orchestrator.build_itinerary(customer_profile)
-    assert len(result.destinations) > 0
-    assert all(d.pois for d in result.destinations)
-```
+- `tests/unit/agents/` → `src/agents/`
+- `tests/unit/api/` → `src/api/`
+- `tests/integration/` → orchestrator and end-to-end backend flows
+- `tests/infra/` → `infra/` plus Docker deployment assets
+- `src/frontend/src/**/*.test.tsx` → frontend components, hooks, and API
+  client
 
 ## CI/CD Integration
 
-These tests run in GitHub Actions on every push. See .github/workflows/ for CI configuration.
+GitHub Actions runs these suites through:
+- `.github/workflows/deploy-app-dev.yml`
+- `.github/workflows/deploy-infra-dev.yml`
 
 ## See Also
 
-- [README.md](../README.md) — Running tests section
+- [README.md](../README.md) — Top-level running tests section
+- [src/README.md](../src/README.md) — Production code under test
+- [src/frontend/README.md](../src/frontend/README.md) — Frontend testing
+  details
 - [docs/architecture.md](../docs/architecture.md) — System design
-- [src/README.md](../src/README.md) — Production code to test
