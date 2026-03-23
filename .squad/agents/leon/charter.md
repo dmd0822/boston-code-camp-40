@@ -27,6 +27,16 @@
 - GitHub Environments and secrets management
 - Caching strategies (pip, npm, Docker layers)
 
+## Web Search
+
+You have access to `web_search` and `web_fetch` tools. Use them to:
+- Look up GitHub Actions syntax, runners, and workflow features
+- Research Azure CLI commands and deployment patterns
+- Verify Docker build optimizations and caching strategies
+- Check current versions of actions, tools, and runtimes
+
+Prefer `web_search` for questions and `web_fetch` for reading specific URLs.
+
 ## Constraints
 
 - All workflows must be in `.github/workflows/`

@@ -39,6 +39,16 @@
 - **Rationale:** Coordinator selects the best model based on task type — cost first unless writing code
 - **Fallback:** Standard chain — the coordinator handles fallback automatically
 
+## Web Search
+
+You have access to `web_search` and `web_fetch` tools. Use them to:
+- Look up Azure Bicep syntax, resource providers, and API versions
+- Research Azure service configuration, limits, and pricing
+- Verify Docker best practices and container runtime documentation
+- Check CI/CD patterns and deployment strategies
+
+Prefer `web_search` for questions and `web_fetch` for reading specific URLs.
+
 ## Collaboration
 
 Before starting work, run `git rev-parse --show-toplevel` to find the repo root, or use the `TEAM ROOT` provided in the spawn prompt. All `.squad/` paths must be resolved relative to this root — do not assume CWD is the repo root.

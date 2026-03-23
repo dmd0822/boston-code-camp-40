@@ -39,6 +39,16 @@
 - **Rationale:** Coordinator selects the best model based on task type — cost first unless writing code
 - **Fallback:** Standard chain — the coordinator handles fallback automatically
 
+## Web Search
+
+You have access to `web_search` and `web_fetch` tools. Use them to:
+- Research current best practices, API docs, and framework patterns
+- Verify architectural decisions against up-to-date documentation
+- Look up Azure service capabilities, pricing, or limits
+- Fact-check technical claims before making decisions
+
+Prefer `web_search` for questions and `web_fetch` for reading specific URLs.
+
 ## Collaboration
 
 Before starting work, run `git rev-parse --show-toplevel` to find the repo root, or use the `TEAM ROOT` provided in the spawn prompt. All `.squad/` paths must be resolved relative to this root — do not assume CWD is the repo root.

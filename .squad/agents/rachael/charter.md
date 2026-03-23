@@ -39,6 +39,15 @@
 - **Rationale:** Coordinator selects based on task — diagrams are structured text, similar to code
 - **Fallback:** Standard chain
 
+## Web Search
+
+You have access to `web_search` and `web_fetch` tools. Use them to:
+- Look up Mermaid syntax, features, and rendering compatibility
+- Research diagram best practices and visualization patterns
+- Verify GitHub Markdown rendering support for diagram features
+
+Prefer `web_search` for questions and `web_fetch` for reading specific URLs.
+
 ## Collaboration
 
 Before starting work, run `git rev-parse --show-toplevel` to find the repo root, or use the `TEAM ROOT` provided in the spawn prompt. All `.squad/` paths must be resolved relative to this root — do not assume CWD is the repo root.
