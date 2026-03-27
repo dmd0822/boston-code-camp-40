@@ -94,7 +94,7 @@ graph TD
         DestinationCards --> Weather[Weather Widget<br/>Forecast Display]
     end
     
-    API -->|fetch POST| APIBoundary[/api/itinerary<br/>REST Endpoint]
+    API -->|fetch POST| APIBoundary[REST Endpoint<br/>/api/itinerary]
     APIBoundary -.->|200 OK JSON| API
     APIBoundary -.->|4xx/5xx Error| API
     
@@ -407,19 +407,19 @@ Azure deployment architecture showing all managed services and container apps wi
 graph TB
     subgraph "Azure Resource Group: travel-agent-{env}-rg"
         subgraph "Container Apps Environment: travel-agent-{env}-env"
-            FrontendApp[Azure Container App<br/>travel-agent-{env}-frontend<br/>React SPA + nginx<br/>Port 80]
-            BackendApp[Azure Container App<br/>travel-agent-{env}-backend<br/>FastAPI + Uvicorn<br/>Port 8000]
+            FrontendApp["Azure Container App<br/>travel-agent-{env}-frontend<br/>React SPA + nginx<br/>Port 80"]
+            BackendApp["Azure Container App<br/>travel-agent-{env}-backend<br/>FastAPI + Uvicorn<br/>Port 8000"]
         end
         
-        ACR[Azure Container Registry<br/>travelagent{env}acr<br/>Basic tier<br/>Images: backend:0.1.0, frontend:0.1.0]
+        ACR["Azure Container Registry<br/>travelagent{env}acr<br/>Basic tier<br/>Images: backend:0.1.0, frontend:0.1.0"]
         
-        OpenAI[Azure OpenAI Service<br/>travel-agent-{env}-openai<br/>GPT-4o deployment<br/>S0 tier, Capacity: 10]
+        OpenAI["Azure OpenAI Service<br/>travel-agent-{env}-openai<br/>GPT-4o deployment<br/>S0 tier, Capacity: 10"]
         
-        Bing[Bing Web Search API<br/>travel-agent-{env}-bing<br/>Cognitive Services<br/>S1 tier]
+        Bing["Bing Web Search API<br/>travel-agent-{env}-bing<br/>Cognitive Services<br/>S1 tier"]
         
         subgraph "AI Foundry: Management & Governance Layer"
-            AIHub[AI Foundry Hub<br/>travel-agent-{env}-aihub<br/>Central governance & monitoring]
-            AIProject[AI Foundry Project<br/>travel-agent-{env}-aiproject<br/>Development workspace]
+            AIHub["AI Foundry Hub<br/>travel-agent-{env}-aihub<br/>Central governance & monitoring"]
+            AIProject["AI Foundry Project<br/>travel-agent-{env}-aiproject<br/>Development workspace"]
             AIConnection[OpenAI Connection<br/>Links Hub to OpenAI resource]
             
             AIHub -->|manages| AIProject
