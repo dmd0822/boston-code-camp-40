@@ -8,6 +8,23 @@
 - **Scope:** MVP — no auth, no persistence of itineraries
 - **Created:** 2026-03-12
 
+## Core Context
+
+**Pris Current State (2026-03-28):**
+
+- **Primary Role:** Frontend Developer — React + Vite + TypeScript
+- **Current Phase:** Travel advisory visualization complete (TravelAdvisoryPanel with CSS-only risk gauge)
+- **Test Status:** 120 frontend tests passing (29 new advisory tests + 91 from earlier phases)
+- **Key Components Built:** CustomerForm, ItineraryView, DestinationCard, LoadingState, ErrorState, TravelAdvisoryBadge, TravelAdvisoryPanel
+- **Recent Delivery:** TravelAdvisoryPanel with full accessibility (role="meter", role="alert", role="region"), color-gradient backgrounds, itemized warnings, State Department source link
+- **Technical Debt:** None — MVP scope maintained, no unnecessary dependencies
+
+**Coordination Notes:**
+- **Batty:** Backend API stable on port 8000, no changes needed for advisory work
+- **Zhora:** Test integration working well — 29 new tests added smoothly
+- **Gaff:** No infrastructure changes needed for front-end work
+- **Deckard:** Architecture stable — all decisions documented in decisions.md
+
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
