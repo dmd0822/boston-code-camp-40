@@ -331,3 +331,50 @@ Phase 6 comprehensive error handling and UX polish complete across all three age
 - 325 total tests (262 backend + 63 frontend), all passing
 
 **Result:** System hardened, tested, and demo-ready. 262 backend tests passing, 63 frontend tests passing, zero failures.
+
+### 2026-03-13 — Travel Advisory Agent Test Coverage (Zhora)
+
+**Status:** ✅ COMPLETE — 43 new tests, all passing
+
+**Issue:** #4 — feat: Add Travel Advisory Agent
+
+**Test Files Created/Updated:**
+
+1. `tests/unit/agents/test_travel_advisory_agent.py` — 18 tests
+   - Level 1-4 advisory parsing (4 tests)
+   - Unknown/invalid destination handling (5 tests: null, NULL, non-dict, malformed JSON, invalid data)
+   - Specific warnings extraction (3 tests: populated, strings, multiple)
+   - Source URL population (2 tests: present, valid URL)
+   - Hallucination validation (4 tests: state.gov reference, 1-4 scale, non-empty summary, cross-level grounding)
+
+2. `tests/unit/api/test_models.py` — 21 new TravelAdvisory tests
+   - Valid advisory construction
+   - Advisory level range 1-4 (parametrized)
+   - Out-of-range rejection: 0, -1, 5, 10, -100 (parametrized)
+   - Non-integer rejection
+   - Required field enforcement (4 fields)
+   - Optional last_updated (None and absent)
+   - Empty warnings list rejected (min_length=1)
+   - Destination accepts travel_advisory field
+   - Destination defaults travel_advisory to None
+
+3. `tests/unit/orchestrator/test_travel_orchestrator.py` — 4 new tests
+   - Advisory agent invoked in Phase 2 fan-out
+   - Advisory data appears in ItineraryResponse destinations
+   - Advisory failure degrades gracefully (other agents unaffected)
+   - Advisory timeout preserves other agents' results
+
+**Fixtures Created:**
+- `tests/fixtures/agent_responses/travel_advisory_agent.json` — Mock LLM responses for levels 1-4
+- `tests/fixtures/search_results/bing_travel_advisory.json` — Mock Bing search results for advisory queries
+
+**Key Patterns:**
+- PipelineContext helper class encapsulates agent mocking (DefaultAzureCredential, AzureAIClient, Agent, system prompt)
+- Tests written proactively from requirements before implementation landed
+- Hallucination tests validate travel.state.gov grounding across all 4 advisory levels
+- TravelAdvisory model has ge=1/le=4 constraint on advisory_level and min_length=1 on specific_warnings
+- Orchestrator now fan-outs to 4 specialist agents (POI, Event, Weather, Advisory)
+
+**Test Counts:**
+- Unit tests: 158 backend (was 137, +21 model tests, no frontend changes)
+- All 158 unit tests passing ✅
