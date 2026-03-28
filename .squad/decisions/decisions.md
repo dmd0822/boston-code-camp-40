@@ -385,6 +385,97 @@ Typed backend exceptions plus standard API error envelope as test contract.
 
 ---
 
+## 2026-03-28 — Travel Advisory Agent Integration
+
+**Author:** Batty | **Status:** Implemented | **Issue:** #4
+
+Added a fifth specialist agent — Travel Advisory Agent — to the Phase 2 concurrent fan-out. It runs alongside POI, Event, and Weather agents via `asyncio.gather()`.
+
+**Decision:**
+
+1. **Optional[TravelAdvisory]** on Destination (not List) — a destination has one advisory per country, not multiple. Follows Weather Agent's Optional pattern, not the POI/Event list pattern.
+
+2. **source_url is required** (not Optional) — advisory data without a verifiable source is useless. `specific_warnings` also has `min_length=1` since every advisory has at least one concern.
+
+3. **advisory_level validated 1-4** — uses Pydantic `ge=1, le=4` to enforce the State Department scale at the model boundary.
+
+4. **Graceful degradation** — advisory failure returns None, does not block other agents. The all-specialist-failure check now requires all four agents (not three) to fail before raising ItineraryGenerationError.
+
+**Impact:**
+- **Pris (Frontend):** Destination response now includes `travel_advisory: {...} | null`. UI can display advisory badge.
+- **Zhora (Tests):** New agent needs unit tests (fixtures may already exist at `tests/fixtures/agent_responses/travel_advisory_agent.json`).
+- **Gaff (Infra):** No new services required — uses same Azure OpenAI and Bing Search as existing agents.
+
+---
+
+## 2026-03-28 — Travel Advisory UI Pattern
+
+**Author:** Pris | **Status:** Implemented | **Issue:** #4
+
+Travel advisory data is optional on every `Destination` object (`travel_advisory?: TravelAdvisory | null`). The frontend degrades gracefully when it's missing.
+
+**UI Levels:**
+
+| Level | Badge | Card Behavior |
+|-------|-------|---------------|
+| 1 🟢 | Green inline badge | Normal display |
+| 2 🟡 | Yellow inline badge | Normal display |
+| 3 🟠 | Orange badge + expanded warning panel | `role="alert"` panel with specific warnings |
+| 4 🔴 | Red badge + expanded warning panel | Panel + "choose alternate destination" advice |
+
+**Top-Level Banner:**
+
+`ItineraryView` filters for Level 3-4 destinations and renders a `⚠️ Travel Advisory Warnings` banner above all destination cards. This ensures severe advisories are never buried.
+
+**Loading Step:**
+
+The `LoadingState` now includes "Checking travel advisories..." in Phase 2 (concurrent with POI/events/weather agents).
+
+**Impact:**
+- **Batty:** Backend must include `travel_advisory` in the `Destination` response model (nullable/optional).
+- **Zhora:** New component has 24 tests. Additional edge-case tests may be warranted for the ItineraryView banner.
+- **Gaff:** No infra changes needed.
+
+---
+
+## 2026-03-28 — Date Picker Defaults (Pris)
+
+**Author:** Pris | **Status:** Implemented
+
+When the traveler picks a start date, the form now only auto-updates the end date if the current end date is blank or earlier than the new start date. If the traveler already chose a later valid end date, the form preserves it.
+
+**Reasoning:** This keeps the new convenience behavior from overwriting an intentional return date. The end date input also uses the current start date as its native `min` constraint so invalid earlier selections are blocked in the browser UI.
+
+---
+
+## 2026-03-28 — User Directive: Web Search Enabled (Dave Davis)
+
+**Author:** Dave Davis | **Status:** Implemented | **Date:** 2026-03-23
+
+All agents should have web search enabled — use `web_search` and `web_fetch` tools to look up documentation, verify facts, and ground decisions in current information.
+
+**Why:** User request — captured for team memory
+
+---
+
+## 2026-03-28 — Travel Advisory Agent Test Contracts
+
+**Author:** Zhora | **Status:** Implemented | **Issue:** #4
+
+Tests for the Travel Advisory Agent follow the same patterns as Weather Agent tests:
+- `_patch_agent_pipeline()` helper encapsulates all Azure mocking
+- `pytest.importorskip()` used for graceful skipping if module doesn't exist
+- Mock fixtures in `tests/fixtures/agent_responses/travel_advisory_agent.json`
+- Hallucination tests validate `travel.state.gov` grounding
+
+**Impact:**
+
+- **Batty:** Implementation must return `TravelAdvisory` model with `advisory_level` (1-4), `advisory_summary`, `specific_warnings` (non-empty list), and `source_url` (containing `travel.state.gov`). Return `"null"` string for unknown destinations.
+- **Orchestrator:** `get_travel_advisory` is now part of Phase 2 fan-out alongside POI/Event/Weather. Tests verify it's called once per destination and degrades gracefully on failure.
+- **Model:** `TravelAdvisory.advisory_level` uses `ge=1, le=4`; `specific_warnings` uses `min_length=1`; `last_updated` is optional.
+
+---
+
 ## How to Use This Document
 
 - **Adding decisions:** File them in `.squad/decisions/inbox/` (named `{author}-{topic}.md`). Scribe merges to this file after each phase.
