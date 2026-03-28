@@ -169,6 +169,55 @@ export const validItineraryResponse: ItineraryResponse = {
       },
       travel_advisory: level2Advisory,
     },
+    {
+      name: 'Barcelona',
+      country: 'Spain',
+      rationale:
+        'Vibrant coastal city combining stunning Gaudí architecture, Mediterranean beaches, and exceptional tapas culture.',
+      points_of_interest: [
+        {
+          name: 'Sagrada Família',
+          description: 'Gaudí\'s masterpiece basilica, an architectural marvel under construction since 1882',
+          category: 'Religious Site',
+          visit_duration_hours: 3,
+          source_url: 'https://sagradafamilia.org/en/',
+        },
+        {
+          name: 'Park Güell',
+          description: 'Colorful public park with unique Gaudí-designed structures and city views',
+          category: 'Park',
+          visit_duration_hours: 2,
+          source_url: 'https://www.parkguell.cat/en',
+        },
+        {
+          name: 'La Rambla',
+          description: 'Famous tree-lined pedestrian street with markets, street performers, and cafes',
+          category: 'Landmark',
+          visit_duration_hours: 1.5,
+          source_url: 'https://www.barcelona.cat/en/',
+        },
+      ],
+      events: [
+        {
+          name: 'Sónar Festival',
+          dates: {
+            start: '2026-06-18',
+            end: '2026-06-20',
+          },
+          description: 'International festival of electronic and experimental music',
+          venue: 'Various venues across Barcelona',
+          source_url: 'https://sonar.es/en/',
+        },
+      ],
+      weather: {
+        avg_high_celsius: 26,
+        avg_low_celsius: 19,
+        precipitation_chance: '15%',
+        clothing_suggestion: 'Light summer clothes, sunglasses, and swimwear for beaches',
+        source_url: 'https://www.weather.com/weather/monthly/l/Barcelona+Spain',
+      },
+      travel_advisory: level1Advisory,
+    },
   ],
   generated_at: '2026-05-15T14:30:00Z',
 };

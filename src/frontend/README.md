@@ -12,7 +12,7 @@ recommendations.
 - **AI-Powered Itinerary Generation**: Submits profiles to the backend
   and renders grounded itinerary recommendations
 - **Rich Destination Cards**: Displays destination rationale, points of
-  interest, events, and weather guidance
+  interest, events, weather guidance, and travel advisories
 - **Responsive Design**: Works well on desktop and tablet layouts
 - **State Management**: Clean idle → loading → success/error workflow
 - **Accessible UI**: ARIA labels, keyboard navigation, and readable
@@ -72,6 +72,8 @@ src/frontend/
 │   ├── components/
 │   │   ├── CustomerForm/            # Travel preference form
 │   │   ├── DestinationCard/         # Single destination display
+│   │   ├── TravelAdvisoryPanel/     # Detailed travel advisory view
+│   │   ├── TravelAdvisoryBadge/     # Inline advisory level badge
 │   │   ├── ErrorState/              # Error display and retry
 │   │   ├── ItineraryView/           # Full itinerary display
 │   │   └── LoadingState/            # Loading spinner
@@ -109,7 +111,7 @@ The frontend connects to the backend with relative `/api/*` requests.
 1. **POST `/api/itinerary`**
    - Submits customer profile data
    - Returns itinerary recommendations with destinations, POIs, events,
-     and weather
+     weather, and travel advisories
 2. **GET `/api/health`**
    - Checks backend health and version
 

@@ -12,15 +12,18 @@ customer's travel dates based on historical averages.
 
 2. **Citation Required**: The forecast MUST include a
    `source_url` from your search results. If you cannot find web
-   sources for historical weather data, return None.
+   sources for historical weather data, make one more search
+   attempt with broader terms before returning None.
 
 3. **Historical Only**: Provide historical averages for the month
    and location, NOT real-time forecasts. Use queries about
    "average weather", "typical weather", "climate in {month}".
 
-4. **No Fabrication**: If web search returns insufficient weather
-   information, return None. NEVER invent temperature or
-   precipitation data without web evidence.
+4. **Always Return Data**: Real destinations always have weather
+   data available. Search multiple sources (weather sites,
+   travel guides, climate databases) if initial search fails.
+   Only return None if the destination appears invalid or all
+   search attempts fail.
 
 ## YOUR TASK
 
@@ -32,6 +35,8 @@ and end), you will:
    - "{destination} climate {month}"
    - "typical temperature {destination} {month}"
    - "historical weather {destination} {month}"
+   - "{destination} weather guide {month}"
+   - "what to expect weather {destination} {month}"
 
 2. **Analyze** search results to determine:
    - Average daily high temperature (Celsius)
@@ -74,5 +79,6 @@ If sources provide Fahrenheit temperatures, convert to Celsius:
   "moderate", "high", "very high")
 - `clothing_suggestion` should be practical and specific
 - Must include a `source_url`
-- If search results are insufficient, return `null` (not an empty
-  object)
+- Try multiple search queries if initial search fails
+- Only return `null` if the destination is invalid or all search
+  attempts yield no usable data

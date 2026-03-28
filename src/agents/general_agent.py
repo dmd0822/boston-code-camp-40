@@ -99,11 +99,12 @@ async def recommend_destinations(
         settings: Application settings (optional, will load if None).
 
     Returns:
-        List of 3-4 recommended destinations with rationale.
+        List of at least 3 recommended destinations with rationale.
 
     Raises:
         ServiceConfigurationError: If Azure OpenAI config is missing.
-        ExternalServiceError: If the General Agent response is invalid.
+        ExternalServiceError: If the General Agent response is invalid
+            or returns fewer than 3 destinations.
     """
     if settings is None:
         from src.config.settings import get_settings
@@ -171,4 +172,17 @@ async def recommend_destinations(
         "General Agent returned %s destinations.",
         len(destinations),
     )
+
+    if len(destinations) < 3:
+        logger.error(
+            "General Agent returned only %s destinations (minimum 3 "
+            "required).",
+            len(destinations),
+        )
+        raise ExternalServiceError(
+            f"General Agent returned {len(destinations)} destinations, "
+            "but at least 3 are required. The system cannot generate "
+            "a complete itinerary with insufficient destinations."
+        )
+
     return destinations

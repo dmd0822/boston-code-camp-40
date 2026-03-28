@@ -43,17 +43,17 @@
 │  │                                                           │  │
 │  │  1. Receive customer profile                              │  │
 │  │  2. Invoke General Agent (sequential)                     │  │
-│  │  3. Fan-out to POI / Event / Weather agents (concurrent)  │  │
+│  │  3. Fan-out to POI/Event/Weather/Advisory (concurrent)    │  │
 │  │  4. Fan-in: aggregate results into itinerary              │  │
 │  │  5. Return itinerary to frontend                          │  │
 │  └───────────┬──────────┬──────────┬──────────┬──────────────┘  │
 │              │          │          │          │                  │
-│       ┌──────▼───┐ ┌───▼────┐ ┌──▼────┐ ┌──▼──────┐           │
-│       │ General  │ │  POI   │ │ Event │ │ Weather │           │
-│       │  Agent   │ │ Agent  │ │ Agent │ │  Agent  │           │
-│       └──────┬───┘ └───┬────┘ └──┬────┘ └──┬──────┘           │
-│              │         │         │         │                    │
-│              ▼         ▼         ▼         ▼                    │
+│       ┌──────▼───┐ ┌───▼────┐ ┌──▼────┐ ┌──▼──────┐  ┌────▼────┐ │
+│       │ General  │ │  POI   │ │ Event │ │ Weather │  │ Travel  │ │
+│       │  Agent   │ │ Agent  │ │ Agent │ │  Agent  │  │Advisory │ │
+│       └──────┬───┘ └───┬────┘ └──┬────┘ └──┬──────┘  └────┬────┘ │
+│              │         │         │         │              │      │
+│              ▼         ▼         ▼         ▼              ▼      │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │          Azure OpenAI  +  Bing Web Search API             │  │
 │  │          (LLM reasoning)   (grounding / web search)       │  │
@@ -99,6 +99,7 @@ src/
 │   ├── poi_agent.py            # Point of Interest agent
 │   ├── event_agent.py          # Event / festival agent
 │   ├── weather_agent.py        # Historical weather agent
+│   ├── travel_advisory_agent.py # Travel advisory lookup agent
 │   └── tools/                  # Shared tools available to agents
 │       ├── __init__.py
 │       └── web_search.py       # Bing Web Search tool wrapper
@@ -133,9 +134,10 @@ Phase 1 (Sequential):
 
 Phase 2 (Concurrent Fan-Out / Fan-In):
   For each Destination:
-    ├── POI Agent    → List[PointOfInterest]
-    ├── Event Agent  → List[Event]
-    └── Weather Agent → WeatherForecast
+    ├── POI Agent             → List[PointOfInterest]
+    ├── Event Agent           → List[Event]
+    ├── Weather Agent         → WeatherForecast
+    └── Travel Advisory Agent → TravelAdvisory
 
 Aggregation:
   Combine all results into a single Itinerary response
@@ -208,6 +210,18 @@ agent — it is deterministic control flow that invokes agents.
 | **Tools** | `search_web` — searches "average weather in {destination} in {month}" |
 | **Grounding Strategy** | Searches for historical averages (not real-time forecasts — those would be unreliable for future trips). |
 | **Hallucination Controls** | 1) Must cite weather data source. 2) System prompt: "Base all weather information on search results for historical averages. Do not guess temperatures." |
+
+### 3.5 Travel Advisory Agent (State Department Advisory)
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Check current U.S. State Department travel advisories for destinations |
+| **Input** | `Destination` (name, country) + `travel_dates` |
+| **Output** | `TravelAdvisory` — advisory_level (1-4), advisory_summary, specific_warnings (list), last_updated, source_url |
+| **System Prompt** | `data/prompts/travel-advisory-agent/system.md` |
+| **Tools** | `search_web` — searches "U.S. State Department travel advisory {destination} {country}" |
+| **Grounding Strategy** | Searches for official State Department advisories. Uses the four-level scale: 1=Normal Precautions, 2=Increased Caution, 3=Reconsider Travel, 4=Do Not Travel. If no advisory is found, returns `null`. |
+| **Hallucination Controls** | 1) Must cite State Department URL. 2) System prompt: "Only return advisories from official U.S. State Department sources. Return null if no advisory can be found. Never fabricate advisory levels or warnings." |
 
 ### Shared Anti-Hallucination Pattern
 
@@ -288,6 +302,13 @@ Generate a travel itinerary from a customer profile.
         "precipitation_chance": "low",
         "clothing_suggestion": "Light layers, comfortable walking shoes",
         "source_url": "https://..."
+      },
+      "travel_advisory": {
+        "advisory_level": 1,
+        "advisory_summary": "Exercise normal precautions in Portugal",
+        "specific_warnings": ["Petty theft in tourist areas", "Standard travel safety measures apply"],
+        "last_updated": "2026-03-01",
+        "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/portugal-travel-advisory.html"
       }
     }
   ],
@@ -329,6 +350,7 @@ Key models:
 - `PointOfInterest` — POI Agent output
 - `Event` — Event Agent output
 - `WeatherForecast` — Weather Agent output
+- `TravelAdvisory` — Travel Advisory Agent output
 - `ItineraryResponse` — full aggregated response
 
 ---

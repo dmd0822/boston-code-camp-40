@@ -378,3 +378,67 @@ Phase 6 comprehensive error handling and UX polish complete across all three age
 **Test Counts:**
 - Unit tests: 158 backend (was 137, +21 model tests, no frontend changes)
 - All 158 unit tests passing ✅
+
+### 2026-03-28 — Minimum 3 Destination + Enrichment Validation Tests (Zhora)
+
+**Status:** ✅ COMPLETE — 13 new backend tests, 120 frontend tests (updated 3), all passing
+
+**Context:**
+- Batty implemented backend changes to enforce minimum 3 destinations from General Agent
+- Batty implemented enrichment validation (all 4 types: POI, events, weather, travel_advisory)
+- Tests written to validate these guarantees before full integration
+
+**Test Files Created:**
+
+1. **tests/unit/agents/test_general_agent_validation.py** — 5 tests
+   - Zero destinations raises ExternalServiceError
+   - One destination raises ExternalServiceError
+   - Two destinations raise ExternalServiceError
+   - Three destinations (minimum) passes validation
+   - Four destinations (exceeds minimum) passes validation
+
+2. **tests/unit/orchestrator/test_enrichment_validation.py** — 8 tests
+   - All 4 enrichment types attempted per destination
+   - Missing POI logs warning but continues (graceful degradation)
+   - Missing events logs warning but continues
+   - Missing weather logs warning but continues
+   - Missing travel advisory logs warning but continues
+   - All enrichments failing raises ItineraryGenerationError
+   - Minimum 3 destinations gate in orchestrator
+   - Partial enrichment failures still return results
+
+**Frontend Test Fixtures Updated:**
+
+3. **src/frontend/src/test/fixtures.ts**
+   - Added Barcelona as 3rd destination (was only Paris and Rome)
+   - Barcelona includes all 4 enrichment types (POI, events, weather, travel_advisory)
+   - Updated to match backend minimum 3 destination requirement
+
+**Frontend Tests Updated:**
+- `src/api/__tests__/itineraryApi.test.ts` — Updated length check from 2 to 3
+- `src/components/__tests__/ItineraryView.test.tsx` — Updated destination count from 2 to 3
+- `src/hooks/__tests__/useItinerary.test.ts` — Updated length check from 2 to 3
+
+**Key Learnings:**
+
+- **Validation Location:** General Agent validates minimum 3 destinations at source (line 177-182 in `src/agents/general_agent.py`)
+- **Error Type:** ExternalServiceError raised with descriptive message when < 3 destinations
+- **Orchestrator Behavior:** Orchestrator's `_safe_call` wrapper handles individual enrichment failures gracefully
+- **All-Fail Safety:** If all 4 enrichment agents fail for a destination, orchestrator raises ItineraryGenerationError
+- **Minimum Guarantee:** Backend now enforces hard requirement for 3+ destinations and attempts all 4 enrichments
+- **Test Pattern:** Used pytest.raises() with exc_info to validate error messages contain expected text
+- **Frontend Alignment:** Test fixtures must have 3+ destinations to match backend contract
+
+**Test Results:**
+- Backend: 13 new tests, all passing (5 general agent + 8 orchestrator)
+- Frontend: 120 tests, all passing (3 tests updated for new fixture)
+- **Total New Coverage:** 13 backend validation tests
+- **Total Project Tests:** 260 (247 + 13 new)
+
+**File Paths:**
+- Backend validation: `tests/unit/agents/test_general_agent_validation.py`
+- Orchestrator enrichment: `tests/unit/orchestrator/test_enrichment_validation.py`
+- Frontend fixtures: `src/frontend/src/test/fixtures.ts`
+- General agent source: `src/agents/general_agent.py` (lines 174-182)
+- Orchestrator source: `src/orchestrator/travel_orchestrator.py` (lines 205-219)
+
