@@ -146,3 +146,39 @@
 - `src/frontend/src/components/__tests__/CustomerForm.test.tsx`
 
 **Phase 6 Complete:** Backend hardening (Batty), frontend UX polish (Pris), comprehensive error testing (Zhora). 325 tests passing (262 backend + 63 frontend). Conference-demo ready.
+
+---
+
+### 2026-03-28 — Issue #4: Travel Advisory UI (Pris)
+
+**Status:** ✅ COMPLETE — Advisory badges, warning panels, and top-level banner integrated into existing frontend components.
+
+**What Was Built:**
+- **TravelAdvisoryBadge** component (new) — dual-mode: compact inline badge (all levels) and expanded warning panel (Level 3-4 only)
+  - Level 1 🟢 / Level 2 🟡 — small colored badge in DestinationCard header
+  - Level 3 🟠 — expanded warning panel with `role="alert"`, specific warnings list
+  - Level 4 🔴 — expanded panel plus "choose alternate destination" recommendation
+- **DestinationCard** updated — advisory badge in header, expanded panel below header for severe advisories
+- **ItineraryView** updated — top-level `⚠️ Travel Advisory Warnings` banner surfaces Level 3-4 destinations before cards
+- **LoadingState** updated — new "Checking travel advisories..." step in Phase 2 (concurrent with POI/events/weather)
+- **TypeScript types** — `TravelAdvisory` interface and `AdvisoryLevel` union type added to `itinerary.ts`
+- **Graceful degradation** — all components render normally when `travel_advisory` is null/undefined
+
+**Architecture Decisions:**
+- Advisory badge uses CSS Modules (consistent with existing component pattern)
+- Expanded warning panel uses `role="alert"` for screen reader announcement of severe advisories
+- Badge renders as `role="status"` for non-disruptive Level 1-2 indications
+- Top-level banner in ItineraryView uses singular/plural grammar for destination count
+- `prefers-reduced-motion` respected on all new CSS
+
+**Testing:**
+- 24 new tests added (14 TravelAdvisoryBadge + 5 DestinationCard advisory + 5 ItineraryView banner)
+- All 91 frontend tests passing
+- Test fixtures include Level 1-4 advisories plus destination fixtures with Level 3/4
+
+**Key Files:**
+- `src/frontend/src/components/TravelAdvisoryBadge/TravelAdvisoryBadge.tsx`
+- `src/frontend/src/components/TravelAdvisoryBadge/TravelAdvisoryBadge.module.css`
+- `src/frontend/src/components/__tests__/TravelAdvisoryBadge.test.tsx`
+- `src/frontend/src/types/itinerary.ts` (TravelAdvisory, AdvisoryLevel)
+- `src/frontend/src/test/fixtures.ts` (level1-4 advisory fixtures)

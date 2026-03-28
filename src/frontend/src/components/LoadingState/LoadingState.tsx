@@ -4,7 +4,7 @@ import styles from './LoadingState.module.css';
 type LoadingStatus = 'complete' | 'active' | 'pending';
 
 interface LoadingStep {
-  id: 'destinations' | 'poi' | 'events' | 'weather' | 'itinerary';
+  id: 'destinations' | 'poi' | 'events' | 'weather' | 'advisories' | 'itinerary';
   label: string;
   description: string;
 }
@@ -36,6 +36,11 @@ const LOADING_STEPS: LoadingStep[] = [
     id: 'weather',
     label: 'Checking weather...',
     description: 'Adding seasonal context so the itinerary feels practical.',
+  },
+  {
+    id: 'advisories',
+    label: 'Checking travel advisories...',
+    description: 'Reviewing State Department travel restrictions and safety alerts.',
   },
   {
     id: 'itinerary',
@@ -80,6 +85,7 @@ function getStepStatus(stepId: LoadingStep['id'], phaseIndex: number): LoadingSt
     return phaseIndex >= 2 ? 'active' : 'pending';
   }
 
+  // POI, events, weather, and advisories all run concurrently in Phase 2
   if (phaseIndex === 0) {
     return 'pending';
   }

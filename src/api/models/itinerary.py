@@ -108,11 +108,49 @@ class WeatherForecast(BaseModel):
     )
 
 
+class TravelAdvisory(BaseModel):
+    """U.S. State Department travel advisory for a destination.
+
+    Uses the official four-level advisory scale. All data is
+    grounded in web search results — never fabricated.
+    """
+
+    advisory_level: int = Field(
+        ...,
+        ge=1,
+        le=4,
+        description=(
+            "State Department advisory level (1-4). "
+            "1=Normal Precautions, 2=Increased Caution, "
+            "3=Reconsider Travel, 4=Do Not Travel"
+        ),
+    )
+    advisory_summary: str = Field(
+        ...,
+        description="One-sentence summary of the advisory",
+    )
+    specific_warnings: List[str] = Field(
+        ...,
+        min_length=1,
+        description="List of specific warnings or concerns",
+    )
+    last_updated: Optional[str] = Field(
+        default=None,
+        description=(
+            "Date the advisory was last updated (ISO 8601)"
+        ),
+    )
+    source_url: str = Field(
+        ...,
+        description="URL of the advisory source",
+    )
+
+
 class Destination(BaseModel):
     """A travel destination with enriched detail.
 
     Produced by the General Agent and enriched by the POI,
-    Event, and Weather specialist agents.
+    Event, Weather, and Travel Advisory specialist agents.
     """
 
     name: str = Field(
@@ -138,6 +176,10 @@ class Destination(BaseModel):
     weather: Optional[WeatherForecast] = Field(
         default=None,
         description="Expected weather conditions",
+    )
+    travel_advisory: Optional[TravelAdvisory] = Field(
+        default=None,
+        description="State Department travel advisory",
     )
 
 

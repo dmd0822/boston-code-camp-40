@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ItineraryView } from '../ItineraryView/ItineraryView';
-import { validItineraryResponse } from '../../test/fixtures';
+import {
+  validItineraryResponse,
+  destinationWithLevel3Advisory,
+  destinationWithLevel4Advisory,
+} from '../../test/fixtures';
+import type { ItineraryResponse } from '../../types/itinerary';
 
 describe('ItineraryView', () => {
   it('should render all destinations', () => {
@@ -74,5 +79,79 @@ describe('ItineraryView', () => {
     // Rome weather
     expect(screen.getByText('28°C')).toBeInTheDocument();
     expect(screen.getByText('18°C')).toBeInTheDocument();
+  });
+
+  describe('travel advisory warnings banner', () => {
+    it('should show advisory banner when a destination has Level 3 advisory', () => {
+      const itinerary: ItineraryResponse = {
+        ...validItineraryResponse,
+        destinations: [
+          ...validItineraryResponse.destinations,
+          destinationWithLevel3Advisory,
+        ],
+      };
+
+      render(<ItineraryView itinerary={itinerary} />);
+
+      expect(screen.getByText('⚠️ Travel Advisory Warnings')).toBeInTheDocument();
+      expect(
+        screen.getByText(/1 destination in your itinerary has/i)
+      ).toBeInTheDocument();
+    });
+
+    it('should show advisory banner when a destination has Level 4 advisory', () => {
+      const itinerary: ItineraryResponse = {
+        ...validItineraryResponse,
+        destinations: [
+          ...validItineraryResponse.destinations,
+          destinationWithLevel4Advisory,
+        ],
+      };
+
+      render(<ItineraryView itinerary={itinerary} />);
+
+      expect(screen.getByText('⚠️ Travel Advisory Warnings')).toBeInTheDocument();
+      expect(screen.getAllByText(/do not travel/i).length).toBeGreaterThan(0);
+    });
+
+    it('should show plural text for multiple severe advisories', () => {
+      const itinerary: ItineraryResponse = {
+        ...validItineraryResponse,
+        destinations: [
+          destinationWithLevel3Advisory,
+          destinationWithLevel4Advisory,
+        ],
+      };
+
+      render(<ItineraryView itinerary={itinerary} />);
+
+      expect(
+        screen.getByText(/2 destinations in your itinerary have/i)
+      ).toBeInTheDocument();
+    });
+
+    it('should not show advisory banner for Level 1 and Level 2 advisories', () => {
+      render(<ItineraryView itinerary={validItineraryResponse} />);
+
+      expect(
+        screen.queryByText('⚠️ Travel Advisory Warnings')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show advisory banner when no advisory data exists', () => {
+      const itinerary: ItineraryResponse = {
+        ...validItineraryResponse,
+        destinations: validItineraryResponse.destinations.map((d) => ({
+          ...d,
+          travel_advisory: undefined,
+        })),
+      };
+
+      render(<ItineraryView itinerary={itinerary} />);
+
+      expect(
+        screen.queryByText('⚠️ Travel Advisory Warnings')
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -48,6 +48,16 @@ export interface WeatherForecast {
   source_url?: string | null;
 }
 
+export type AdvisoryLevel = 1 | 2 | 3 | 4;
+
+export interface TravelAdvisory {
+  advisory_level: AdvisoryLevel;
+  advisory_summary: string;
+  specific_warnings: string[];
+  last_updated: string | null;
+  source_url: string;
+}
+
 export interface Destination {
   name: string;
   country: string;
@@ -55,6 +65,7 @@ export interface Destination {
   points_of_interest: PointOfInterest[];
   events: Event[];
   weather?: WeatherForecast | null;
+  travel_advisory?: TravelAdvisory | null;
 }
 
 export interface ItineraryResponse {

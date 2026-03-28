@@ -1,0 +1,166 @@
+/* Badge (compact inline indicator) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.badgeLabel {
+  letter-spacing: 0.02em;
+}
+
+/* Level-specific badge colors */
+.badge.level1 {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge.level2 {
+  background: #fffde7;
+  color: #f9a825;
+}
+
+.badge.level3 {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.badge.level4 {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Expanded warning panel (Level 3-4) */
+.warningPanel {
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border-left: 5px solid;
+}
+
+.warningPanel.level3 {
+  background: #fff3e0;
+  border-left-color: #e65100;
+}
+
+.warningPanel.level4 {
+  background: #ffebee;
+  border-left-color: #c62828;
+}
+
+.warningHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.warningEmoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.warningHeaderText {
+  flex: 1;
+}
+
+.warningLevel {
+  font-size: 1.05rem;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.warningPanel.level3 .warningLevel {
+  color: #e65100;
+}
+
+.warningPanel.level4 .warningLevel {
+  color: #c62828;
+}
+
+.warningSummary {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #333;
+  margin: 0;
+}
+
+.warningList {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.warningItem {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.5;
+  margin-bottom: 0.35rem;
+}
+
+.alternateAdvice {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.75rem;
+  background: rgba(198, 40, 40, 0.08);
+  border-radius: 6px;
+  color: #b71c1c;
+}
+
+.warningFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.lastUpdated {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.sourceLink {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2196f3;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.sourceLink:hover {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .warningPanel {
+    padding: 1rem;
+  }
+
+  .warningEmoji {
+    font-size: 1.25rem;
+  }
+
+  .warningFooter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge,
+  .warningPanel {
+    transition: none;
+  }
+}

@@ -1,4 +1,5 @@
 import type { Destination } from '../../types/itinerary';
+import { TravelAdvisoryBadge } from '../TravelAdvisoryBadge/TravelAdvisoryBadge';
 import styles from './DestinationCard.module.css';
 
 interface DestinationCardProps {
@@ -7,16 +8,27 @@ interface DestinationCardProps {
 
 /**
  * Displays detailed information about a single destination.
- * Includes POIs, events, and weather forecast.
+ * Includes POIs, events, weather forecast, and travel advisory.
  */
 export function DestinationCard({ destination }: DestinationCardProps) {
+  const advisory = destination.travel_advisory;
+  const isSevere = advisory != null && advisory.advisory_level >= 3;
+
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <h2 className={styles.title}>
           {destination.name}, {destination.country}
+          {advisory && (
+            <TravelAdvisoryBadge advisory={advisory} />
+          )}
         </h2>
       </div>
+
+      {/* Prominent warning for Level 3-4 advisories */}
+      {advisory && isSevere && (
+        <TravelAdvisoryBadge advisory={advisory} expanded />
+      )}
 
       <p className={styles.rationale}>{destination.rationale}</p>
 

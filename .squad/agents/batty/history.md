@@ -285,3 +285,41 @@ passing (4 skipped), 63 frontend tests passing, zero failures.
   Comprehensive error scenario testing.
 
 **Ready for Phase 7:** Performance optimization and monitoring.
+
+### 2026-03-13 — Travel Advisory Agent Added (Batty, Issue #4)
+
+**What was built:**
+- **Travel Advisory Agent** (`src/agents/travel_advisory_agent.py`) — 
+  Looks up current U.S. State Department travel advisories for each 
+  destination. Returns advisory level (1-4), summary, specific 
+  warnings, last-updated date, and source URL.
+- **System Prompt** (`data/prompts/travel-advisory-agent/system.md`) — 
+  Mandatory search-first grounding rules, State Department 4-level 
+  scale, citation requirements. Instructs agent to return null for 
+  domestic destinations or insufficient data.
+- **TravelAdvisory Model** (`src/api/models/itinerary.py`) — Pydantic 
+  model with `advisory_level` (int, 1-4, ge/le validated), 
+  `advisory_summary`, `specific_warnings` (List[str], min_length=1), 
+  `last_updated` (Optional[str]), `source_url` (required str).
+- **Destination.travel_advisory** field — Optional[TravelAdvisory] 
+  added to Destination model, defaults to None.
+- **Orchestrator integration** — Travel Advisory Agent added to Phase 2 
+  concurrent fan-out in `_enrich_destination()`, runs alongside POI, 
+  Event, and Weather via `asyncio.gather()`.
+
+**Patterns followed:**
+- Same factory pattern as other agents: `create_travel_advisory_agent(settings)` + `get_travel_advisory()` high-level API
+- Same `_safe_call()` wrapper for graceful degradation — if advisory 
+  agent fails, returns None default, other agents unaffected
+- Weather Agent's null-return pattern reused (returns Optional, not List)
+- All-specialist-failure check updated to include advisory_result
+- Exported from `src/agents/__init__.py`
+
+**Key file paths:**
+- `src/agents/travel_advisory_agent.py` — Agent implementation
+- `data/prompts/travel-advisory-agent/system.md` — System prompt
+- `src/api/models/itinerary.py` — TravelAdvisory model + Destination update
+- `src/orchestrator/travel_orchestrator.py` — Phase 2 fan-out update
+- `src/agents/__init__.py` — Package exports
+
+**Testing:** All 262 existing tests pass. Branch: `squad/4-travel-advisory-agent`.
