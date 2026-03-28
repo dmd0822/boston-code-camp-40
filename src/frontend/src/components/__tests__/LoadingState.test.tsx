@@ -10,6 +10,7 @@ describe('LoadingState', () => {
     expect(screen.getByText('Finding destinations...')).toBeInTheDocument();
     expect(screen.getByText('Gathering points of interest...')).toBeInTheDocument();
     expect(screen.getByText('Checking weather...')).toBeInTheDocument();
+    expect(screen.getByText('Checking travel advisories...')).toBeInTheDocument();
     expect(
       screen.getByRole('progressbar', {
         name: /itinerary generation progress/i,

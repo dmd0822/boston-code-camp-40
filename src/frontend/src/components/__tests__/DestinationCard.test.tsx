@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DestinationCard } from '../DestinationCard/DestinationCard';
 import type { Destination } from '../../types/itinerary';
+import {
+  level1Advisory,
+  level3Advisory,
+  level4Advisory,
+} from '../../test/fixtures';
 
 describe('DestinationCard', () => {
   const baseDestination: Destination = {
@@ -213,5 +218,73 @@ describe('DestinationCard', () => {
 
     expect(screen.getByText(/1 hour/i)).toBeInTheDocument();
     expect(screen.queryByText(/1 hours/i)).not.toBeInTheDocument();
+  });
+
+  describe('travel advisory integration', () => {
+    it('should render advisory badge in the header for Level 1', () => {
+      const destination: Destination = {
+        ...baseDestination,
+        travel_advisory: level1Advisory,
+      };
+
+      render(<DestinationCard destination={destination} />);
+
+      expect(screen.getByText('Level 1')).toBeInTheDocument();
+      expect(screen.getByText('🟢')).toBeInTheDocument();
+    });
+
+    it('should render expanded warning panel for Level 3', () => {
+      const destination: Destination = {
+        ...baseDestination,
+        travel_advisory: level3Advisory,
+      };
+
+      render(<DestinationCard destination={destination} />);
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(
+        screen.getByText(/level 3 — reconsider travel/i)
+      ).toBeInTheDocument();
+    });
+
+    it('should render expanded warning with alternate advice for Level 4', () => {
+      const destination: Destination = {
+        ...baseDestination,
+        travel_advisory: level4Advisory,
+      };
+
+      render(<DestinationCard destination={destination} />);
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(
+        screen.getByText(/consider choosing an alternate location/i)
+      ).toBeInTheDocument();
+    });
+
+    it('should gracefully handle missing advisory data (null)', () => {
+      const destination: Destination = {
+        ...baseDestination,
+        travel_advisory: null,
+      };
+
+      render(<DestinationCard destination={destination} />);
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByText(/Paris, France/i)).toBeInTheDocument();
+    });
+
+    it('should gracefully handle missing advisory data (undefined)', () => {
+      const destination: Destination = {
+        ...baseDestination,
+        travel_advisory: undefined,
+      };
+
+      render(<DestinationCard destination={destination} />);
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByText(/Paris, France/i)).toBeInTheDocument();
+    });
   });
 });

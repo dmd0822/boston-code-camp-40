@@ -8,10 +8,14 @@ interface ItineraryViewProps {
 
 /**
  * Displays the complete itinerary with all destinations.
- * Renders header information and maps over destinations.
+ * Surfaces Level 3-4 travel advisories prominently at the top.
  */
 export function ItineraryView({ itinerary }: ItineraryViewProps) {
   const formattedDate = new Date(itinerary.generated_at).toLocaleString();
+
+  const severeAdvisories = itinerary.destinations.filter(
+    (d) => d.travel_advisory != null && d.travel_advisory.advisory_level >= 3
+  );
 
   return (
     <section
@@ -30,6 +34,32 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
           <p className={styles.metaItem}>Generated on {formattedDate}</p>
         </div>
       </header>
+
+      {severeAdvisories.length > 0 && (
+        <div className={styles.advisoryBanner} role="alert">
+          <h2 className={styles.advisoryBannerTitle}>
+            ⚠️ Travel Advisory Warnings
+          </h2>
+          <p className={styles.advisoryBannerText}>
+            {severeAdvisories.length === 1
+              ? '1 destination in your itinerary has'
+              : `${severeAdvisories.length} destinations in your itinerary have`}{' '}
+            elevated travel advisories. Review the details below before
+            finalizing your plans.
+          </p>
+          <ul className={styles.advisoryBannerList}>
+            {severeAdvisories.map((dest, index) => (
+              <li key={index}>
+                <strong>{dest.name}, {dest.country}</strong>{' '}
+                — Level {dest.travel_advisory!.advisory_level}:{' '}
+                {dest.travel_advisory!.advisory_level === 4
+                  ? 'Do Not Travel'
+                  : 'Reconsider Travel'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className={styles.destinations}>
         {itinerary.destinations.map((destination, index) => (
