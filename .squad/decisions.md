@@ -13,10 +13,10 @@
 - Web Search: Bing Web Search API (custom tool in `src/agents/tools/web_search.py`)
 
 **Agent Design:**
-- 4 agents: General (destination matching), POI (points of interest), Event (festivals/fairs), Weather (historical forecasts)
+- 5 agents: General (destination matching), POI (points of interest), Event (festivals/fairs), Weather (historical forecasts), Travel Advisory (State Department advisories)
 - Orchestration: Two-phase deterministic Python (NOT LLM-driven)
   - Phase 1: Sequential invocation of General Agent
-  - Phase 2: Fan-out concurrent execution of POI/Event/Weather agents
+  - Phase 2: Fan-out concurrent execution of POI/Event/Weather/Advisory agents
 - Grounding: Mandatory web search for all agents (search-first pattern)
 
 **API Design:**
@@ -44,6 +44,31 @@
 
 **Document Reference:**
 - `docs/architecture.md` — single source of truth for all architectural decisions
+
+### 2026-03-28 — Minimum 3 Destinations & Full Enrichment Enforcement
+
+**Status:** ✅ IMPLEMENTED
+
+**Decision:**
+
+Enforce hard requirements for itinerary completeness:
+1. **Minimum 3 destinations** — General Agent MUST return at least 3 destinations
+2. **All enrichment types present** — Each destination should have all 4 enrichment types (POI, events, weather, travel advisory)
+
+**Implementation:**
+- **Dual-layer validation:** Agent validates its own output, orchestrator validates minimum count
+- **Warning-based monitoring:** Log missing enrichments but don't crash (graceful degradation)
+- **General Agent prompt:** Changed to "MUST return at least 3 destinations"
+- **Orchestrator:** Validates min 3 after General Agent (raises `ItineraryGenerationError` if not met)
+- **Specialist prompts:** Updated to emphasize trying harder with fallback strategies
+
+**Error Handling:**
+- < 3 destinations → Hard error (502 Bad Gateway)
+- Missing enrichment data → Warning logs + graceful continuation
+
+**Impact:** Batty implemented validation in agent/orchestrator + prompts. Zhora updated tests to expect `ExternalServiceError` for < 3 destinations. All 317 tests pass.
+
+---
 
 ### 2026-03-28 — Advisory visualization uses dedicated panel for all levels
 

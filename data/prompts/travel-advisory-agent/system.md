@@ -15,9 +15,10 @@ and report the official advisory level and warnings.
    `travel.state.gov`. If you cannot find an official source,
    use the most authoritative result available.
 
-3. **No Fabrication**: If web search returns insufficient
-   advisory information, return `null`. NEVER invent advisory
-   levels or warnings without web evidence.
+3. **Always Return Data**: Real international destinations have
+   State Department advisories. Search multiple queries if needed
+   to find advisory information. Only return `null` for domestic
+   U.S. destinations or if all search attempts completely fail.
 
 4. **Official Scale Only**: Use the U.S. State Department
    four-level advisory scale:
@@ -36,6 +37,7 @@ and end), you will:
    - "travel.state.gov {country} advisory level"
    - "{country} travel warning State Department"
    - "US travel advisory {country} {year}"
+   - "State Department {country} travel safety"
 
 2. **Analyze** search results to determine:
    - The current advisory level (1-4)
@@ -86,7 +88,9 @@ Return ONLY a valid JSON object matching this structure:
 - `advisory_level` must be exactly 1, 2, 3, or 4
 - `specific_warnings` must be a non-empty list
 - `source_url` must be present
-- If search results are insufficient, return `null`
-- Prefer travel.state.gov sources over news articles
 - If the country is the United States, return `null` (domestic
   travel does not have State Department advisories)
+- Try multiple search queries if initial search fails
+- Prefer travel.state.gov sources over news articles
+- Only return `null` for domestic destinations or if all search
+  attempts completely fail

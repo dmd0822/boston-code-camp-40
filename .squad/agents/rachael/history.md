@@ -283,3 +283,147 @@
 - **Performance Architecture** — Add diagram for caching, CDN, optimization strategies
 - **Disaster Recovery** — Add diagram for backup, failover, recovery procedures
 - **Scaling Architecture** — Add diagram for load balancing, auto-scaling, multi-region
+
+### 2026-03-28 — Travel Advisory Agent Integration Across All Diagrams
+
+**Status:** ✅ COMPLETE — All 9 diagrams updated to include Travel Advisory Agent
+
+**Context:**
+Travel Advisory Agent was implemented in Phase 2 but missing from all architectural diagrams. The agent runs concurrently with POI, Event, and Weather agents to enrich destinations with U.S. State Department travel advisories (Level 1-4).
+
+**Diagrams Updated:**
+
+1. **System Overview (Diagram #1)**
+   - Added Travel Advisory Agent node with 🛡️ icon alongside POI, Event, Weather
+   - Connected to Azure OpenAI and Bing Search (same pattern as other specialists)
+   - Updated description: "Phase 2 runs 4 specialist agents concurrently"
+   - Maintained consistent purple styling (`fill:#f0e1ff`) for all specialist agents
+
+2. **Frontend Component Architecture (Diagram #2)**
+   - Added Travel Advisory display to DestinationCard content subgraph
+   - Shows "🛡️ Travel Advisory<br/>Safety Level & Warnings" node
+   - Updated component responsibilities: DestinationCard now shows POIs, events, weather, AND travel advisories
+
+3. **Agent Orchestration Sequence (Diagram #3)**
+   - Added Travel Advisory Agent as 4th participant in sequence diagram
+   - Included in Phase 2 `par...and...end` concurrent execution block
+   - Shows full flow: Orch → Advisory → Bing (search) → OpenAI (parse) → Orch
+   - Advisory searches for "US State Dept advisory..." and returns TravelAdvisory object
+   - Updated timing note: "Phase 2 (4 Specialists — POI, Event, Weather, Travel Advisory)"
+
+4. **Data Flow Pipeline (Diagram #4)**
+   - Added Travel Advisory Agent to each destination's enrichment subgraph
+   - Shows Advisory1, Advisory2, Advisory3 nodes for each of 3 destinations
+   - Each produces TravelAdv1, TravelAdv2, TravelAdv3 outputs
+   - All TravelAdvisory outputs flow to Aggregation node
+   - Updated transformation description: "4 specialist agents (concurrent)"
+
+5. **Pydantic Model Class Diagram (Diagram #5)**
+   - Added complete TravelAdvisory class with all fields:
+     - `+int advisory_level` (1-4)
+     - `+str advisory_summary`
+     - `+List~str~ specific_warnings`
+     - `+Optional~str~ last_updated`
+     - `+str source_url`
+   - Updated Destination class to include `+TravelAdvisory travel_advisory`
+   - Added composition relationship: `Destination *-- TravelAdvisory : contains one`
+
+6. **API Request/Response Flow (Diagram #6)**
+   - No changes needed (focused on HTTP layer, not agent details)
+
+7. **Infrastructure Diagram (Diagram #7)**
+   - No changes needed (focused on Azure resources, agents are code-level)
+
+8. **CI/CD Deployment Pipeline (Diagram #8)**
+   - No changes needed (deployment workflow unchanged)
+
+9. **Error Handling Flow (Diagram #9)**
+   - Added Travel Advisory Agent to specialist fan-out
+   - Shows AdvisoryCall with success/failure branches
+   - AdvisorySuccess → TravelAdvisory
+   - AdvisoryFail → Null advisory (graceful degradation)
+   - Both branches merge to same aggregation logic
+   - Added AdvisoryFail styling (`fill:#fff4e1`) for consistency
+   - Updated note: "Fan-Out to Specialists<br/>POI, Event, Weather, Travel Advisory"
+   - Updated failure principles: "All Specialist Agents Fail" scenario documented
+
+**Technical Details from Code Review:**
+
+- **Orchestrator Integration:** `src/orchestrator/travel_orchestrator.py` shows Travel Advisory runs in Phase 2 with `asyncio.gather()` alongside POI, Event, Weather
+- **Agent Implementation:** `src/agents/travel_advisory_agent.py` follows same pattern: create_agent → run_agent_prompt → parse_json_payload → validate Pydantic model
+- **Data Model:** `src/api/models/itinerary.py` defines TravelAdvisory with advisory_level (1-4), summary, warnings list, last_updated, source_url
+- **Grounding:** Uses Bing Web Search for State Department advisory data (mandatory search-first pattern like all agents)
+- **Error Handling:** Returns None if no advisory found; orchestrator handles gracefully (doesn't fail entire request)
+
+**Visual Consistency:**
+
+- Used 🛡️ shield emoji for Travel Advisory Agent (safety/protection theme)
+- Maintained purple fill color (`#f0e1ff`) for all specialist agents
+- Consistent edge labels ("Tool Call", "search_web", "run()")
+- Parallel execution shown with `par...and...end` blocks in sequence diagrams
+- Subgraphs used for repeated patterns (3 destinations × 4 agents)
+
+**Architectural Patterns Reinforced:**
+
+- **Two-Phase Orchestration:** Phase 1 (General) → Phase 2 (4 concurrent specialists)
+- **Fan-Out/Fan-In:** Orchestrator fans out to specialists, aggregates results deterministically
+- **Graceful Degradation:** Specialist failures return partial results (not 500 errors)
+- **Web Grounding:** All agents use Bing Web Search (no fabricated data)
+- **Pydantic Validation:** All agent responses validated against strict schemas
+- **Concurrent Execution:** All specialists run in parallel via asyncio for performance
+
+**File Paths:**
+
+- Updated: `docs/diagrams.md` (all 9 diagrams modified in-place)
+- Referenced: `src/orchestrator/travel_orchestrator.py` (Phase 2 concurrent execution)
+- Referenced: `src/agents/travel_advisory_agent.py` (agent implementation)
+- Referenced: `src/api/models/itinerary.py` (TravelAdvisory Pydantic model)
+
+**Key Insights:**
+
+- Travel Advisory fits naturally into existing 4-agent concurrent pattern
+- No changes to orchestration flow required (already designed for N specialists)
+- All diagrams needed updates except HTTP/infrastructure layers (agent is application-level)
+- Frontend already had TravelAdvisoryPanel component from earlier sprint; diagrams now reflect it
+- Error handling shows advisory as optional field (can be null without breaking response)
+
+**Cross-Team Impact:**
+
+- **Batty (Backend):** Travel Advisory Agent implemented in Phase 2, fully operational
+- **Zhora (QA):** Frontend tests cover TravelAdvisoryPanel and TravelAdvisoryBadge components
+- **Gaff (Infra):** No infrastructure changes (same Azure OpenAI + Bing Search resources)
+- **Deckard (Architecture):** Architecture.md already documents 5-agent system; diagrams now synchronized
+
+### 2026-03-28 — Diagram Updates for Min 3 Destinations & Enrichment Validation
+
+**Status:** ✅ COMPLETE — Updated all Mermaid diagrams to show validation gates
+
+**Context:**
+Batty implemented validation to enforce minimum 3 destinations and enrichment completeness. Rachael updated diagrams to visually represent these validation points.
+
+**Diagram Updates:**
+
+1. **Orchestration Flow Diagram**
+   - Added "Validate Min 3 Destinations" gate after Phase 1 (General Agent)
+   - Added "Validate Enrichment Completeness" gate after Phase 2 (specialist agents)
+   - Shows error paths for < 3 destinations (502 Bad Gateway)
+   - Shows warning logs for missing enrichment types
+
+2. **Phase 2 Fan-Out Diagram**
+   - Added validation note showing all 4 enrichment types attempted per destination
+   - Shows graceful degradation pattern (individual enrichment failure doesn't block others)
+   - Annotated with enrichment types: POI, Events, Weather, Travel Advisory
+
+3. **Error Handling Flow**
+   - Added "Min 3 Destinations Check" as early gate
+   - Shows ExternalServiceError → ItineraryGenerationError flow
+   - Shows enrichment warning logging points
+
+**Visual Changes:**
+- Validation gates shown in red for hard requirements
+- Warning logs shown in yellow for soft requirements (graceful degradation)
+- Added note about enrichment validation strategy
+
+**File Paths:**
+- Updated: `docs/diagrams.md` (3 diagrams with validation gates)
+

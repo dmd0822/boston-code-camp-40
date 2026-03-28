@@ -26,8 +26,8 @@ describe('ItineraryView', () => {
   it('should render correct number of DestinationCards', () => {
     render(<ItineraryView itinerary={validItineraryResponse} />);
 
-    // Check that we have 2 destinations rendered - text may be split across elements
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Check that we have 3 destinations rendered - text may be split across elements
+    expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText(/destinations curated for you/i)).toBeInTheDocument();
   });
 

@@ -1,6 +1,6 @@
 # src/agents/ — AI Agents
 
-This folder contains the four specialized AI agents that power the
+This folder contains the five specialized AI agents that power the
 Travel Agent Application, implemented with Microsoft Agent Framework and
 Azure AI Foundry Agent Service.
 
@@ -10,6 +10,7 @@ Azure AI Foundry Agent Service.
 2. **POI Agent** — Points of interest discovery
 3. **Event Agent** — Events, festivals, and cultural attractions
 4. **Weather Agent** — Weather and seasonal planning guidance
+5. **Travel Advisory Agent** — U.S. State Department travel advisory lookup
 
 ## Agent Design Principles
 
@@ -36,6 +37,7 @@ src/agents/
 ├── poi_agent.py             # POI discovery agent
 ├── event_agent.py           # Event discovery agent
 ├── weather_agent.py         # Weather forecast agent
+├── travel_advisory_agent.py # Travel advisory lookup agent
 └── tools/
     ├── __init__.py
     └── web_search.py        # Shared web search tool
@@ -55,6 +57,7 @@ from src.agents import (
     find_events,
     find_points_of_interest,
     get_weather_forecast,
+    get_travel_advisory,
     recommend_destinations,
 )
 from src.api.models.customer import CustomerProfile, TravelDates
@@ -82,6 +85,11 @@ events = await find_events(
     travel_dates=profile.travel_dates,
 )
 weather = await get_weather_forecast(
+    destination_name="Lisbon",
+    country="Portugal",
+    travel_dates=profile.travel_dates,
+)
+advisory = await get_travel_advisory(
     destination_name="Lisbon",
     country="Portugal",
     travel_dates=profile.travel_dates,
@@ -156,7 +164,8 @@ Phase 2 (Concurrent Fan-Out):
   For each destination:
     ├─ POI Agent
     ├─ Event Agent
-    └─ Weather Agent
+    ├─ Weather Agent
+    └─ Travel Advisory Agent
 
 Phase 3 (Fan-In / Aggregation):
   Combine all results → Itinerary response
@@ -176,7 +185,9 @@ data/prompts/
 │   └── system.md
 ├── event-agent/
 │   └── system.md
-└── weather-agent/
+├── weather-agent/
+│   └── system.md
+└── travel-advisory-agent/
     └── system.md
 ```
 

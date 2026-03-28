@@ -323,3 +323,58 @@ passing (4 skipped), 63 frontend tests passing, zero failures.
 - `src/agents/__init__.py` — Package exports
 
 **Testing:** All 262 existing tests pass. Branch: `squad/4-travel-advisory-agent`.
+
+### 2026-03-28 — Minimum 3 Destinations & Full Enrichment Enforcement (Batty)
+
+**What was changed:**
+- **General Agent System Prompt** (`data/prompts/general-agent/system.md`) 
+  — Made minimum 3 destinations a hard requirement. Changed from 
+  "3-4 destinations (fewer if insufficient evidence)" to "at least 
+  3 destinations REQUIRED, broaden search if needed".
+- **General Agent Code** (`src/agents/general_agent.py`) — Added 
+  validation that raises `ExternalServiceError` if fewer than 3 
+  destinations returned from LLM, with clear error message.
+- **Orchestrator** (`src/orchestrator/travel_orchestrator.py`) — 
+  Added dual-layer validation: (1) Check for min 3 destinations 
+  after Phase 1, raise `ItineraryGenerationError` if not met; 
+  (2) After Phase 2 enrichment, validate all 4 enrichment types 
+  present (POI, events, weather, travel advisory) and log warnings 
+  for any missing data.
+- **Specialist Agent Prompts** — Updated all specialist prompts to 
+  emphasize always returning data:
+  - Event agent: Include recurring/seasonal events if no date-specific 
+    events found
+  - Weather agent: Try multiple search queries, only return None if 
+    destination invalid
+  - Travel advisory agent: Real destinations always have advisories, 
+    search multiple queries
+
+**Architecture decisions:**
+- Minimum 3 destinations is a HARD requirement enforced at both 
+  agent and orchestrator levels
+- Graceful degradation still applies to individual enrichments 
+  (won't crash if one fails), but we now log warnings to track 
+  quality issues
+- Empty enrichments are no longer silently accepted — validation 
+  logging makes missing data visible for monitoring
+
+**Patterns established:**
+- Dual-layer validation: agent validates output, orchestrator 
+  validates completeness
+- Warning logs for incomplete enrichments enable quality monitoring 
+  without breaking graceful degradation
+- Specialist prompts now emphasize "always try to return data" 
+  pattern with fallback strategies
+
+**Key file paths:**
+- `data/prompts/general-agent/system.md` — Hard min 3 requirement
+- `data/prompts/event-agent/system.md` — Recurring events fallback
+- `data/prompts/weather-agent/system.md` — Multi-query strategy
+- `data/prompts/travel-advisory-agent/system.md` — Always return advisory
+- `src/agents/general_agent.py` — < 3 destinations error
+- `src/orchestrator/travel_orchestrator.py` — Dual validation + 
+  enrichment completeness warnings
+- `tests/unit/agents/test_general_agent_validation.py` — Updated to 
+  expect ExternalServiceError for < 3 destinations
+
+**Testing:** All 317 tests pass (4 skipped).

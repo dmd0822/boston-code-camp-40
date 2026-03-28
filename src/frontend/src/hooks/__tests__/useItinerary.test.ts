@@ -105,7 +105,7 @@ describe('useItinerary', () => {
     });
 
     expect(result.current.itinerary).not.toBeNull();
-    expect(result.current.itinerary?.destinations).toHaveLength(2);
+    expect(result.current.itinerary?.destinations).toHaveLength(3);
     expect(result.current.itinerary?.generated_at).toBe('2026-05-15T14:30:00Z');
   });
 
