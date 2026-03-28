@@ -1,0 +1,300 @@
+/* ===========================
+   TravelAdvisoryPanel styles
+   =========================== */
+
+/* Panel container */
+.panel {
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-left: 6px solid;
+  transition: box-shadow 0.2s ease;
+}
+
+.panel:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Level-specific panel themes */
+.panel.level1 {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-left-color: #2e7d32;
+}
+
+.panel.level2 {
+  background: linear-gradient(135deg, #fffde7 0%, #fff9c4 100%);
+  border-left-color: #f9a825;
+}
+
+.panel.level3 {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-left-color: #e65100;
+}
+
+.panel.level4 {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  border-left-color: #c62828;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.headerIcon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.headerText {
+  flex: 1;
+}
+
+.levelTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem 0;
+}
+
+.panel.level1 .levelTitle { color: #2e7d32; }
+.panel.level2 .levelTitle { color: #e65100; }
+.panel.level3 .levelTitle { color: #e65100; }
+.panel.level4 .levelTitle { color: #c62828; }
+
+.summary {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #333;
+  margin: 0;
+}
+
+/* Risk Gauge */
+.gaugeContainer {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+}
+
+.gaugeTrack {
+  display: flex;
+  gap: 4px;
+  height: 2.5rem;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gaugeSegment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.3;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  position: relative;
+}
+
+/* Segment base colors */
+.gaugeSegment.level1 { background: #4caf50; color: #fff; }
+.gaugeSegment.level2 { background: #ffc107; color: #333; }
+.gaugeSegment.level3 { background: #ff9800; color: #fff; }
+.gaugeSegment.level4 { background: #f44336; color: #fff; }
+
+/* Filled segments (at or below active level) */
+.gaugeSegment.filled {
+  opacity: 1;
+}
+
+/* Active segment highlight */
+.gaugeSegment.active {
+  opacity: 1;
+  transform: scaleY(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.segmentLabel {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+}
+
+.gaugeCaption {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+/* Specific Warnings */
+.warningsSection {
+  margin: 1.25rem 0;
+}
+
+.warningsTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 0.65rem 0;
+}
+
+.warningsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.warningItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #444;
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Do Not Travel callout (Level 4) */
+.doNotTravel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(198, 40, 40, 0.1);
+  border: 1px solid rgba(198, 40, 40, 0.25);
+  border-radius: 8px;
+}
+
+.doNotTravel p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #b71c1c;
+  line-height: 1.5;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.lastUpdated {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.lastUpdated time {
+  font-weight: 500;
+}
+
+.sourceLink {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1565c0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.sourceLink:hover {
+  color: #0d47a1;
+  text-decoration: underline;
+}
+
+.sourceLink:focus-visible {
+  outline: 2px solid #1565c0;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .panel {
+    padding: 1.15rem;
+    border-left-width: 5px;
+  }
+
+  .headerIcon {
+    font-size: 1.4rem;
+  }
+
+  .levelTitle {
+    font-size: 1.05rem;
+  }
+
+  .gaugeContainer {
+    padding: 0.75rem;
+  }
+
+  .gaugeTrack {
+    height: 2rem;
+  }
+
+  .segmentLabel {
+    font-size: 0.55rem;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .segmentLabel {
+    display: none;
+  }
+
+  .warningItem {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .gaugeSegment,
+  .sourceLink {
+    transition: none;
+  }
+
+  .gaugeSegment.active {
+    transform: none;
+  }
+
+  .panel:hover {
+    box-shadow: none;
+  }
+}

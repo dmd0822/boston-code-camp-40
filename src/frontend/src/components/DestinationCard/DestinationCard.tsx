@@ -1,5 +1,6 @@
 import type { Destination } from '../../types/itinerary';
 import { TravelAdvisoryBadge } from '../TravelAdvisoryBadge/TravelAdvisoryBadge';
+import { TravelAdvisoryPanel } from '../TravelAdvisoryPanel/TravelAdvisoryPanel';
 import styles from './DestinationCard.module.css';
 
 interface DestinationCardProps {
@@ -12,7 +13,6 @@ interface DestinationCardProps {
  */
 export function DestinationCard({ destination }: DestinationCardProps) {
   const advisory = destination.travel_advisory;
-  const isSevere = advisory != null && advisory.advisory_level >= 3;
 
   return (
     <div className={styles.card}>
@@ -25,9 +25,9 @@ export function DestinationCard({ destination }: DestinationCardProps) {
         </h2>
       </div>
 
-      {/* Prominent warning for Level 3-4 advisories */}
-      {advisory && isSevere && (
-        <TravelAdvisoryBadge advisory={advisory} expanded />
+      {/* Rich advisory panel for all levels */}
+      {advisory && (
+        <TravelAdvisoryPanel advisory={advisory} />
       )}
 
       <p className={styles.rationale}>{destination.rationale}</p>

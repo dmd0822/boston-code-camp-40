@@ -8,6 +8,23 @@
 - **Scope:** MVP — no auth, no persistence of itineraries
 - **Created:** 2026-03-12
 
+## Core Context
+
+**Pris Current State (2026-03-28):**
+
+- **Primary Role:** Frontend Developer — React + Vite + TypeScript
+- **Current Phase:** Travel advisory visualization complete (TravelAdvisoryPanel with CSS-only risk gauge)
+- **Test Status:** 120 frontend tests passing (29 new advisory tests + 91 from earlier phases)
+- **Key Components Built:** CustomerForm, ItineraryView, DestinationCard, LoadingState, ErrorState, TravelAdvisoryBadge, TravelAdvisoryPanel
+- **Recent Delivery:** TravelAdvisoryPanel with full accessibility (role="meter", role="alert", role="region"), color-gradient backgrounds, itemized warnings, State Department source link
+- **Technical Debt:** None — MVP scope maintained, no unnecessary dependencies
+
+**Coordination Notes:**
+- **Batty:** Backend API stable on port 8000, no changes needed for advisory work
+- **Zhora:** Test integration working well — 29 new tests added smoothly
+- **Gaff:** No infrastructure changes needed for front-end work
+- **Deckard:** Architecture stable — all decisions documented in decisions.md
+
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
@@ -182,3 +199,39 @@
 - `src/frontend/src/components/__tests__/TravelAdvisoryBadge.test.tsx`
 - `src/frontend/src/types/itinerary.ts` (TravelAdvisory, AdvisoryLevel)
 - `src/frontend/src/test/fixtures.ts` (level1-4 advisory fixtures)
+
+---
+
+### 2026-03-28 — Travel Advisory Rich Visualization Panel (Pris)
+
+**Status:** ✅ COMPLETE — Dedicated TravelAdvisoryPanel with CSS-only risk gauge, color gradients, and full advisory detail.
+
+**What Was Built:**
+- **TravelAdvisoryPanel** component (new) — rich full-detail advisory visualization for all levels:
+  - CSS-only four-segment risk gauge (`role="meter"`) with filled/active states
+  - Color-gradient backgrounds per level (green → yellow → orange → red)
+  - Header with level icon, title, and advisory summary
+  - Specific warnings rendered as itemized list with ⚠️ icons
+  - Level 4 "Do Not Travel" callout with strong recommendation
+  - Source attribution link with "U.S. State Department" branding
+  - Semantic `<time>` element for last-updated display
+  - `role="alert"` for Level 3-4 (screen reader announcement), `role="region"` for Level 1-2
+- **DestinationCard** updated — now renders TravelAdvisoryPanel for all advisory levels (replaces expanded badge which only showed for Level 3-4)
+- **29 new tests** covering header rendering, risk gauge ARIA, accessibility roles, warnings, Level 4 callout, source attribution, timestamps, and all-levels smoke tests
+
+**Architecture Decisions:**
+- Panel uses CSS Modules with linear gradients (consistent with existing DestinationCard weather styling pattern)
+- Risk gauge is pure CSS — no external charting library needed for MVP
+- Gauge segments use `opacity` and `transform: scaleY` for visual weight, with `prefers-reduced-motion` fallback
+- Advisory panel renders for ALL levels (not just 3-4) — every destination gets the full context
+- Kept `TravelAdvisoryBadge` as the inline header badge; `TravelAdvisoryPanel` is the detailed view
+- `role="meter"` with full ARIA attributes for the gauge (valuemin/valuemax/valuenow/valuetext)
+
+**Key Files:**
+- `src/frontend/src/components/TravelAdvisoryPanel/TravelAdvisoryPanel.tsx`
+- `src/frontend/src/components/TravelAdvisoryPanel/TravelAdvisoryPanel.module.css`
+- `src/frontend/src/components/__tests__/TravelAdvisoryPanel.test.tsx`
+- `src/frontend/src/components/DestinationCard/DestinationCard.tsx` (updated import + usage)
+
+**Test Results:** 120 frontend tests passing (29 new + 91 existing)
+
