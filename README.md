@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build, Test & Deploy](https://github.com/dmd0822/boston-code-camp-40/actions/workflows/deploy-app-dev.yml/badge.svg)](https://github.com/dmd0822/boston-code-camp-40/actions/workflows/deploy-app-dev.yml)
-![Backend Tests](https://img.shields.io/badge/backend_tests-308_passing-brightgreen)
+![Backend Tests](https://img.shields.io/badge/backend_tests-5_failing-red)
 ![Frontend Tests](https://img.shields.io/badge/frontend_tests-0_passing-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-308_passing-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-failing-red)
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
