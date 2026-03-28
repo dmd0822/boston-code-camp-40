@@ -5,11 +5,16 @@ This package contains the agent implementations:
 - POI Agent: Points of interest discovery
 - Event Agent: Festival and event discovery
 - Weather Agent: Historical weather forecasting
+- Travel Advisory Agent: State Department advisory lookup
 """
 
 from .event_agent import create_event_agent, find_events
 from .general_agent import create_general_agent, recommend_destinations
 from .poi_agent import create_poi_agent, find_points_of_interest
+from .travel_advisory_agent import (
+    create_travel_advisory_agent,
+    get_travel_advisory,
+)
 from .weather_agent import create_weather_agent, get_weather_forecast
 
 __all__ = [
@@ -21,4 +26,6 @@ __all__ = [
     "find_events",
     "create_weather_agent",
     "get_weather_forecast",
+    "create_travel_advisory_agent",
+    "get_travel_advisory",
 ]

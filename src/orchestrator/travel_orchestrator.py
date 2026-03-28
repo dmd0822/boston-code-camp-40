@@ -1,7 +1,8 @@
 """Travel orchestrator — coordinates agent pipeline.
 
 Phase 1 (Sequential): General Agent recommends destinations.
-Phase 2 (Concurrent): POI/Event/Weather agents enrich each dest.
+Phase 2 (Concurrent): POI/Event/Weather/Travel Advisory agents
+enrich each destination.
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from azure.core.exceptions import AzureError
 from src.agents.event_agent import find_events
 from src.agents.general_agent import recommend_destinations
 from src.agents.poi_agent import find_points_of_interest
+from src.agents.travel_advisory_agent import get_travel_advisory
 from src.agents.weather_agent import get_weather_forecast
 from src.api.models.customer import CustomerProfile, TravelDates
 from src.api.models.itinerary import (
@@ -23,6 +25,7 @@ from src.api.models.itinerary import (
     Event,
     ItineraryResponse,
     PointOfInterest,
+    TravelAdvisory,
     WeatherForecast,
 )
 from src.config.settings import Settings
@@ -49,7 +52,8 @@ class TravelOrchestrator:
 
     Two-phase execution:
     1. Sequential: General Agent recommends 3-4 destinations.
-    2. Concurrent: POI/Event/Weather agents enrich each destination.
+    2. Concurrent: POI/Event/Weather/Travel Advisory agents
+       enrich each destination.
 
     Specialist agent failures degrade gracefully to partial results,
     while General Agent failures bubble up to the API layer.
@@ -140,7 +144,7 @@ class TravelOrchestrator:
         destination: Destination,
         travel_dates: TravelDates,
     ) -> Destination:
-        """Enrich a destination with POI, event, and weather data.
+        """Enrich a destination with POI, event, weather, and advisory.
 
         Uses concurrent execution to fan-out to specialist agents,
         then merges results back into the destination.
@@ -150,7 +154,8 @@ class TravelOrchestrator:
             travel_dates: Customer travel date range.
 
         Returns:
-            Enriched destination with POI, events, and weather.
+            Enriched destination with POI, events, weather, and
+            travel advisory data.
         """
         poi_task = self._safe_call(
             find_points_of_interest,
@@ -176,17 +181,32 @@ class TravelOrchestrator:
             self.settings,
             default=None,
         )
+        advisory_task = self._safe_call(
+            get_travel_advisory,
+            destination.name,
+            destination.country,
+            travel_dates,
+            self.settings,
+            default=None,
+        )
 
-        poi_result, event_result, weather_result = await asyncio.gather(
+        (
+            poi_result,
+            event_result,
+            weather_result,
+            advisory_result,
+        ) = await asyncio.gather(
             poi_task,
             event_task,
             weather_task,
+            advisory_task,
         )
 
         if (
             poi_result.failed
             and event_result.failed
             and weather_result.failed
+            and advisory_result.failed
         ):
             logger.error(
                 "All specialist agents failed for %s, %s.",
@@ -201,6 +221,7 @@ class TravelOrchestrator:
         destination.points_of_interest = poi_result.value
         destination.events = event_result.value
         destination.weather = weather_result.value
+        destination.travel_advisory = advisory_result.value
         return destination
 
     async def _safe_call(
