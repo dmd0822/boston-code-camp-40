@@ -80,7 +80,10 @@ class TestGeneralAgentMinimumDestinations:
         pytest.importorskip("src.agents.general_agent")
         from src.agents.general_agent import recommend_destinations
 
-        settings = Settings()
+        settings = Settings(
+            AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+            AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
+        )
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
@@ -125,7 +128,10 @@ class TestGeneralAgentMinimumDestinations:
         pytest.importorskip("src.agents.general_agent")
         from src.agents.general_agent import recommend_destinations
 
-        settings = Settings()
+        settings = Settings(
+            AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+            AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
+        )
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
@@ -170,7 +176,10 @@ class TestGeneralAgentMinimumDestinations:
         pytest.importorskip("src.agents.general_agent")
         from src.agents.general_agent import recommend_destinations
 
-        settings = Settings()
+        settings = Settings(
+            AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+            AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
+        )
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
@@ -215,7 +224,10 @@ class TestGeneralAgentMinimumDestinations:
         pytest.importorskip("src.agents.general_agent")
         from src.agents.general_agent import recommend_destinations
 
-        settings = Settings()
+        settings = Settings(
+            AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+            AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
+        )
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
@@ -261,7 +273,10 @@ class TestGeneralAgentMinimumDestinations:
         pytest.importorskip("src.agents.general_agent")
         from src.agents.general_agent import recommend_destinations
 
-        settings = Settings()
+        settings = Settings(
+            AZURE_AI_PROJECT_ENDPOINT="https://test.services.ai.azure.com/api/projects/test",
+            AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4o",
+        )
         profile = CustomerProfile(**sample_customer_profile)
 
         mock_response = MagicMock()
