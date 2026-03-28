@@ -36,7 +36,7 @@ describe('itineraryApi', () => {
       const result = await createItinerary(validCustomerProfile);
 
       expect(result).toEqual(validItineraryResponse);
-      expect(result.destinations).toHaveLength(2);
+      expect(result.destinations).toHaveLength(3);
       expect(result.destinations[0].name).toBe('Paris');
     });
 

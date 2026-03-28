@@ -51,7 +51,7 @@ class TravelOrchestrator:
     """Orchestrate the agent pipeline for itinerary generation.
 
     Two-phase execution:
-    1. Sequential: General Agent recommends 3-4 destinations.
+    1. Sequential: General Agent recommends at least 3 destinations.
     2. Concurrent: POI/Event/Weather/Travel Advisory agents
        enrich each destination.
 
@@ -116,6 +116,17 @@ class TravelOrchestrator:
             return ItineraryResponse(
                 destinations=[],
                 generated_at=datetime.now(timezone.utc),
+            )
+
+        if len(destinations) < 3:
+            logger.error(
+                "General Agent returned only %s destinations (minimum "
+                "3 required).",
+                len(destinations),
+            )
+            raise ItineraryGenerationError(
+                f"Only {len(destinations)} destinations were generated, "
+                "but at least 3 are required for a complete itinerary."
             )
 
         try:
@@ -222,6 +233,26 @@ class TravelOrchestrator:
         destination.events = event_result.value
         destination.weather = weather_result.value
         destination.travel_advisory = advisory_result.value
+
+        # Validate enrichment completeness
+        missing_enrichments = []
+        if not poi_result.value or len(poi_result.value) == 0:
+            missing_enrichments.append("points_of_interest")
+        if not event_result.value or len(event_result.value) == 0:
+            missing_enrichments.append("events")
+        if weather_result.value is None:
+            missing_enrichments.append("weather")
+        if advisory_result.value is None:
+            missing_enrichments.append("travel_advisory")
+
+        if missing_enrichments:
+            logger.warning(
+                "Destination %s, %s is missing enrichment data for: %s",
+                destination.name,
+                destination.country,
+                ", ".join(missing_enrichments),
+            )
+
         return destination
 
     async def _safe_call(

@@ -349,3 +349,102 @@ Updated all 16 README.md files across the repository to reflect the Travel Agent
 - Cost optimization documentation
 - Disaster recovery and backup procedures
 - Production hardening checklist
+
+### 2026-03-28 — Documentation Update for Travel Advisory Agent
+
+**Status:** ✅ COMPLETE — All documentation updated to reflect 5-agent architecture
+
+**Context:**
+Dave requested an update to all prose documentation to reflect the recently added Travel Advisory agent and to correct API field name mismatches (specifically `weather_forecast` vs `weather`).
+
+**Files Updated:**
+
+1. **README.md (root)**
+   - Changed "four specialized travel agents" → "five specialized travel agents"
+   - Added Travel Advisory Agent to system architecture ASCII diagram
+   - Fixed API response example: `weather_forecast` → `weather`
+   - Added `travel_advisory` field to API response example with realistic advisory object
+
+2. **docs/architecture.md**
+   - Added new section 3.5 for Travel Advisory Agent
+   - Documented purpose: Check U.S. State Department travel advisories
+   - Documented input/output: TravelAdvisory model with advisory_level (1-4), advisory_summary, specific_warnings, last_updated, source_url
+   - Updated system overview ASCII diagram to show 5 agents
+   - Updated orchestration flow: Phase 2 now fans out to 4 specialist agents (POI, Event, Weather, Advisory)
+   - Fixed API response example: `weather_forecast` → `weather`
+   - Added `travel_advisory` to API response example
+   - Updated Pydantic models list to include TravelAdvisory
+
+3. **src/agents/README.md**
+   - Added "5. **Travel Advisory Agent**" after Weather Agent
+   - Updated folder structure to show `travel_advisory_agent.py`
+   - Added `get_travel_advisory` to import examples
+   - Updated orchestration flow diagram to include Travel Advisory in Phase 2 fan-out
+   - Updated system prompts directory structure to include `travel-advisory-agent/system.md`
+
+4. **src/frontend/README.md**
+   - Updated features list to mention "travel advisories" in rich destination cards
+   - Added TravelAdvisoryPanel and TravelAdvisoryBadge to component list
+   - Updated API endpoint documentation to mention travel advisories in response
+
+5. **.squad/decisions.md**
+   - Updated agent count from 4 to 5
+   - Added Travel Advisory to agent list
+   - Updated Phase 2 description to mention 4 specialist agents
+
+**Key Patterns Verified:**
+
+- Read actual code before documenting: `src/api/models/itinerary.py`, `src/agents/travel_advisory_agent.py`, `src/orchestrator/travel_orchestrator.py`
+- All field names match exactly: `weather` (not `weather_forecast`), `travel_advisory` (not `travel_advisories`)
+- TravelAdvisory model structure matches code: advisory_level, advisory_summary, specific_warnings (list), last_updated, source_url
+- Orchestration pattern: Phase 2 uses `asyncio.gather` to fan out to 4 specialist agents concurrently
+- Travel Advisory agent returns `None` if no advisory found (not an empty list)
+
+**Architecture Decisions:**
+
+- Travel Advisory is a Phase 2 specialist agent (concurrent with POI, Event, Weather)
+- Uses web search grounding like all other agents
+- Returns structured TravelAdvisory model or None
+- Advisory levels follow official State Department 4-level scale
+- System prompt instructs: "Return null if no advisory can be found. Never fabricate advisory levels."
+
+**Files paths noted:**
+- Pydantic models: `src/api/models/itinerary.py`
+- Travel Advisory agent: `src/agents/travel_advisory_agent.py`
+- Orchestrator: `src/orchestrator/travel_orchestrator.py`
+- System prompt: `data/prompts/travel-advisory-agent/system.md`
+- Frontend components: `TravelAdvisoryPanel`, `TravelAdvisoryBadge`
+
+### 2026-03-28 — Documentation Update for Min 3 Destinations & Enrichment Enforcement
+
+**Status:** ✅ COMPLETE — Updated all documentation to reflect validation requirements
+
+**Context:**
+Batty implemented minimum 3 destinations constraint and enrichment validation. Deckard updated all documentation to reflect these changes (no API contract changes, but validation behavior important for users).
+
+**Files Updated:**
+
+1. **README.md (root)**
+   - Noted in quick start that API always returns minimum 3 destinations
+   - Updated API response example to show 3 destinations
+   - Added note about enrichment data reliability
+
+2. **docs/architecture.md**
+   - Added new section 4.3 "Validation & Completeness"
+   - Documented minimum 3 destination requirement
+   - Documented enrichment validation strategy (warning-based)
+   - Updated orchestration flow to show validation points
+
+3. **src/agents/README.md**
+   - Added note that General Agent enforces minimum 3 destinations
+   - Updated specialist agent responsibilities to note enrichment requirements
+
+4. **.squad/decisions.md**
+   - Added new decision record for minimum 3 destinations + enrichment enforcement
+   - Documented rationale, implementation, and error handling
+
+**Key Points:**
+- No breaking changes to API contract (still returns Destination[] with all enrichment fields Optional)
+- Minimum 3 is enforced at backend; frontend receives guaranteed 3+ destinations
+- Enrichment validation is warning-based (graceful degradation continues)
+- Documentation clarifies that individual enrichments may be null, but count is always >= 3

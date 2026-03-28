@@ -35,16 +35,19 @@ graph TD
     Orchestrator -->|Phase 2: Concurrent| POIAgent[POI Agent<br/>Points of Interest]
     Orchestrator -->|Phase 2: Concurrent| EventAgent[Event Agent<br/>Festivals & Events]
     Orchestrator -->|Phase 2: Concurrent| WeatherAgent[Weather Agent<br/>Historical Forecasts]
+    Orchestrator -->|Phase 2: Concurrent| AdvisoryAgent[🛡️ Travel Advisory Agent<br/>Safety & Warnings]
     
     GeneralAgent -->|Tool Call| AzureOpenAI[Azure OpenAI<br/>GPT-4o]
     POIAgent -->|Tool Call| AzureOpenAI
     EventAgent -->|Tool Call| AzureOpenAI
     WeatherAgent -->|Tool Call| AzureOpenAI
+    AdvisoryAgent -->|Tool Call| AzureOpenAI
     
     GeneralAgent -->|search_web| BingSearch[Bing Web Search API<br/>Grounding]
     POIAgent -->|search_web| BingSearch
     EventAgent -->|search_web| BingSearch
     WeatherAgent -->|search_web| BingSearch
+    AdvisoryAgent -->|search_web| BingSearch
     
     Orchestrator -->|Aggregated Response| Backend
     Backend -->|200 OK JSON| Frontend
@@ -55,6 +58,7 @@ graph TD
     style POIAgent fill:#f0e1ff
     style EventAgent fill:#f0e1ff
     style WeatherAgent fill:#f0e1ff
+    style AdvisoryAgent fill:#f0e1ff
     style AzureOpenAI fill:#ffe1e1
     style BingSearch fill:#ffe1e1
 ```
@@ -62,6 +66,7 @@ graph TD
 **Key Points:**
 - React frontend with complete component architecture (see Frontend Component Architecture diagram)
 - Orchestrator coordinates two-phase agent execution
+- Phase 2 runs 4 specialist agents concurrently: POI, Event, Weather, and Travel Advisory
 - All agents grounded in Bing Web Search (mandatory search-first pattern)
 - Azure OpenAI (GPT-4o) provides reasoning for all agents
 
@@ -92,6 +97,7 @@ graph TD
         DestinationCards --> POIs[POI List<br/>Points of Interest]
         DestinationCards --> Events[Event List<br/>Festivals & Activities]
         DestinationCards --> Weather[Weather Widget<br/>Forecast Display]
+        DestinationCards --> Advisory[🛡️ Travel Advisory<br/>Safety Level & Warnings]
     end
     
     API -->|fetch POST| APIBoundary[REST Endpoint<br/>/api/itinerary]
@@ -123,7 +129,7 @@ graph TD
 3. **CustomerForm**: Collects user preferences (interests, budget, dates, party size)
 4. **LoadingState**: Displays loading spinner with status text during API call
 5. **ItineraryView**: Renders successful response with destination cards
-6. **DestinationCard**: Shows POIs, events, and weather for each destination
+6. **DestinationCard**: Shows POIs, events, weather, and travel advisories for each destination
 7. **ErrorState**: Displays error message with retry button
 8. **itineraryApi.ts**: Type-safe API client using fetch (POST to `/api/itinerary`)
 
@@ -153,6 +159,7 @@ sequenceDiagram
     participant POI as POI Agent
     participant Event as Event Agent
     participant Weather as Weather Agent
+    participant Advisory as 🛡️ Travel Advisory Agent
     participant OpenAI as Azure OpenAI
     participant Bing as Bing Search API
 
@@ -167,7 +174,7 @@ sequenceDiagram
     OpenAI-->>Gen: List[Destination] (3-4 items)
     Gen-->>Orch: List[Destination]
     
-    Note over Orch,Weather: Phase 2: Concurrent Fan-Out
+    Note over Orch,Advisory: Phase 2: Concurrent Fan-Out
     par Concurrent Execution
         Orch->>POI: run(Destination + dates)
         POI->>Bing: search_web("top things to do in...")
@@ -189,6 +196,13 @@ sequenceDiagram
         Weather->>OpenAI: Extract historical averages
         OpenAI-->>Weather: WeatherForecast
         Weather-->>Orch: WeatherForecast
+    and
+        Orch->>Advisory: run(Destination + dates)
+        Advisory->>Bing: search_web("US State Dept advisory...")
+        Bing-->>Advisory: Travel advisory data
+        Advisory->>OpenAI: Parse advisory level & warnings
+        OpenAI-->>Advisory: TravelAdvisory
+        Advisory-->>Orch: TravelAdvisory
     end
     
     Note over Orch: Fan-In: Aggregate Results
@@ -201,7 +215,7 @@ sequenceDiagram
 
 **Timing:**
 - Phase 1 (General Agent): ~5-10 seconds
-- Phase 2 (Specialists): ~5-10 seconds (parallel execution)
+- Phase 2 (4 Specialists — POI, Event, Weather, Travel Advisory): ~5-10 seconds (parallel execution)
 - Total: 15-30 seconds end-to-end
 
 ---
@@ -222,41 +236,50 @@ graph LR
         Dest1 --> POI1[POI Agent]
         Dest1 --> Event1[Event Agent]
         Dest1 --> Weather1[Weather Agent]
+        Dest1 --> Advisory1[🛡️ Travel Advisory]
         
         POI1 --> POIList1[List&lt;PointOfInterest&gt;]
         Event1 --> EventList1[List&lt;Event&gt;]
         Weather1 --> Forecast1[WeatherForecast]
+        Advisory1 --> TravelAdv1[TravelAdvisory]
     end
     
     subgraph " "
         Dest2 --> POI2[POI Agent]
         Dest2 --> Event2[Event Agent]
         Dest2 --> Weather2[Weather Agent]
+        Dest2 --> Advisory2[🛡️ Travel Advisory]
         
         POI2 --> POIList2[List&lt;PointOfInterest&gt;]
         Event2 --> EventList2[List&lt;Event&gt;]
         Weather2 --> Forecast2[WeatherForecast]
+        Advisory2 --> TravelAdv2[TravelAdvisory]
     end
     
     subgraph " "
         Dest3 --> POI3[POI Agent]
         Dest3 --> Event3[Event Agent]
         Dest3 --> Weather3[Weather Agent]
+        Dest3 --> Advisory3[🛡️ Travel Advisory]
         
         POI3 --> POIList3[List&lt;PointOfInterest&gt;]
         Event3 --> EventList3[List&lt;Event&gt;]
         Weather3 --> Forecast3[WeatherForecast]
+        Advisory3 --> TravelAdv3[TravelAdvisory]
     end
     
     POIList1 --> Agg[Aggregation]
     EventList1 --> Agg
     Forecast1 --> Agg
+    TravelAdv1 --> Agg
     POIList2 --> Agg
     EventList2 --> Agg
     Forecast2 --> Agg
+    TravelAdv2 --> Agg
     POIList3 --> Agg
     EventList3 --> Agg
     Forecast3 --> Agg
+    TravelAdv3 --> Agg
     
     Agg --> Output[ItineraryResponse<br/>Complete enriched itinerary]
     
@@ -268,10 +291,11 @@ graph LR
 
 **Transformations:**
 1. **CustomerProfile** → General Agent → **List[Destination]** (3-4 items)
-2. Each **Destination** → 3 specialist agents (concurrent)
+2. Each **Destination** → 4 specialist agents (concurrent)
    - POI Agent → **List[PointOfInterest]**
    - Event Agent → **List[Event]**
    - Weather Agent → **WeatherForecast**
+   - Travel Advisory Agent → **TravelAdvisory**
 3. All outputs → Deterministic merge → **ItineraryResponse**
 
 ---
@@ -310,6 +334,7 @@ classDiagram
         +List~PointOfInterest~ pois
         +List~Event~ events
         +WeatherForecast weather_forecast
+        +TravelAdvisory travel_advisory
     }
     
     class PointOfInterest {
@@ -341,11 +366,20 @@ classDiagram
         +str source_url
     }
     
+    class TravelAdvisory {
+        +int advisory_level
+        +str advisory_summary
+        +List~str~ specific_warnings
+        +Optional~str~ last_updated
+        +str source_url
+    }
+    
     CustomerProfile *-- TravelDates : contains
     ItineraryResponse *-- Destination : contains 3-4
     Destination *-- PointOfInterest : contains many
     Destination *-- Event : contains many
     Destination *-- WeatherForecast : contains one
+    Destination *-- TravelAdvisory : contains one
     Event *-- EventDates : contains
 ```
 
@@ -608,11 +642,12 @@ graph TD
     
     GenFail -->|Max retries exceeded| EmptyResponse[Return Empty Itinerary<br/>error_message: General agent failed]
     
-    Destinations --> FanOut[Fan-Out to Specialists<br/>POI, Event, Weather]
+    Destinations --> FanOut[Fan-Out to Specialists<br/>POI, Event, Weather, Travel Advisory]
     
     FanOut --> POICall[POI Agent]
     FanOut --> EventCall[Event Agent]
     FanOut --> WeatherCall[Weather Agent]
+    FanOut --> AdvisoryCall[🛡️ Travel Advisory Agent]
     
     POICall -->|Success| POISuccess[List&lt;PointOfInterest&gt;]
     POICall -->|Failure| POIFail[Empty POI list]
@@ -623,12 +658,17 @@ graph TD
     WeatherCall -->|Success| WeatherSuccess[WeatherForecast]
     WeatherCall -->|Failure| WeatherFail[Null weather]
     
+    AdvisoryCall -->|Success| AdvisorySuccess[TravelAdvisory]
+    AdvisoryCall -->|Failure| AdvisoryFail[Null advisory]
+    
     POISuccess --> Merge[Merge Results]
     POIFail --> Merge
     EventSuccess --> Merge
     EventFail --> Merge
     WeatherSuccess --> Merge
     WeatherFail --> Merge
+    AdvisorySuccess --> Merge
+    AdvisoryFail --> Merge
     
     Merge --> Check{All Agents<br/>Succeeded?}
     
@@ -645,6 +685,7 @@ graph TD
     style POIFail fill:#fff4e1
     style EventFail fill:#fff4e1
     style WeatherFail fill:#fff4e1
+    style AdvisoryFail fill:#fff4e1
     style EmptyResponse fill:#ffe1e1
     style PartialItinerary fill:#fff4e1
     style FullItinerary fill:#e1ffe1
@@ -653,9 +694,10 @@ graph TD
 **Failure Handling Principles:**
 1. **General Agent Failure**: Returns empty itinerary (can't proceed without destinations)
 2. **Specialist Agent Failure**: Other agents still run; return partial enrichment
-3. **JSON Parse Failure**: Retry up to 2 times, then return partial result
-4. **Upstream Unavailable**: Return 503 Service Unavailable (not 500)
-5. **Partial Success > Total Failure**: User gets some results even if one agent fails
+3. **All Specialist Agents Fail**: Return error (orchestrator requirement)
+4. **JSON Parse Failure**: Retry up to 2 times, then return partial result
+5. **Upstream Unavailable**: Return 503 Service Unavailable (not 500)
+6. **Partial Success > Total Failure**: User gets some results even if one agent fails
 
 ---
 

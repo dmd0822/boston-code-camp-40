@@ -8,8 +8,8 @@
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
-A FastAPI backend orchestrates four specialized travel agents (General,
-POI, Event, Weather) to build grounded itineraries end-to-end. The app
+A FastAPI backend orchestrates five specialized travel agents (General,
+POI, Event, Weather, Travel Advisory) to build grounded itineraries end-to-end. The app
 uses Microsoft Agent Framework with Azure AI Foundry Agent Service,
 authenticates through `DefaultAzureCredential`, ships with a React
 frontend in `src/frontend/`, and deploys to Azure Container Apps with
@@ -54,6 +54,7 @@ checks.
 │ ├─ POI Agent                           │
 │ ├─ Event Agent                         │
 │ ├─ Weather Agent                       │
+│ ├─ Travel Advisory Agent               │
 │ └─ Travel Orchestrator                 │
 │                                        │
 │ GET /api/health                        │
@@ -260,17 +261,30 @@ Build a personalized travel itinerary.
 **Response:**
 ```json
 {
-  "itinerary_id": "uuid",
   "destinations": [
     {
-      "destination": "Banff, Canada",
-      "description": "...",
-      "source_url": "...",
-      "pois": [],
+      "name": "Banff, Canada",
+      "country": "Canada",
+      "rationale": "...",
+      "points_of_interest": [],
       "events": [],
-      "weather_forecast": {}
+      "weather": {
+        "avg_high_celsius": 22,
+        "avg_low_celsius": 8,
+        "precipitation_chance": "moderate",
+        "clothing_suggestion": "Layers for mountain weather",
+        "source_url": "https://..."
+      },
+      "travel_advisory": {
+        "advisory_level": 1,
+        "advisory_summary": "Exercise normal precautions in Canada",
+        "specific_warnings": ["Standard travel safety measures apply"],
+        "last_updated": "2026-03-01",
+        "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/canada-travel-advisory.html"
+      }
     }
-  ]
+  ],
+  "generated_at": "2026-03-12T10:30:00Z"
 }
 ```
 
