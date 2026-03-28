@@ -45,6 +45,28 @@
 **Document Reference:**
 - `docs/architecture.md` — single source of truth for all architectural decisions
 
+### 2026-03-28 — Advisory visualization uses dedicated panel for all levels
+
+**Status:** ✅ APPROVED & IMPLEMENTED
+
+**Decision:**
+
+Created a new `TravelAdvisoryPanel` component that renders for **all advisory levels** (not just severe), giving every destination full advisory context including a CSS-only risk gauge, specific warnings, source attribution, and timestamp.
+
+- `TravelAdvisoryBadge` remains the inline badge in the DestinationCard header
+- `TravelAdvisoryPanel` is the dedicated detailed view shown below the header
+- No external charting/animation libraries — pure CSS gauge with gradients and opacity transforms
+- `role="meter"` for the gauge, `role="alert"` for Level 3-4, `role="region"` for Level 1-2
+
+**Why:** Previous `TravelAdvisoryBadge` only showed expanded view for Level 3-4 advisories. Dedicated panel ensures all destinations render full advisory context.
+
+**Impact Across Team:**
+
+- **Batty (Backend):** No changes — existing `TravelAdvisory` Pydantic model unchanged
+- **Zhora (QA):** 29 new tests; frontend test suite now at 120 total
+- **Gaff (Infra):** No infrastructure changes
+- **Deckard (Architecture):** Follows established CSS Modules pattern; zero new dependencies
+
 ## Governance
 
 - All meaningful changes require team consensus
