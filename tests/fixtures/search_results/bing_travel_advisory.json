@@ -1,0 +1,20 @@
+{
+  "comment": "Mock Bing search results for travel advisory queries",
+  "results": [
+    {
+      "title": "Portugal Travel Advisory - U.S. Department of State",
+      "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/portugal-travel-advisory.html",
+      "snippet": "Exercise normal precautions when traveling to Portugal. Read the country information page for additional information on travel to Portugal."
+    },
+    {
+      "title": "Portugal International Travel Information",
+      "url": "https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/Portugal.html",
+      "snippet": "Portugal is generally a safe country to visit. Petty crime, including pickpocketing, occurs in tourist areas."
+    },
+    {
+      "title": "Travel Advisories | U.S. Department of State",
+      "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html",
+      "snippet": "Find travel advisories by destination. The Department of State uses a four-level advisory system."
+    }
+  ]
+}

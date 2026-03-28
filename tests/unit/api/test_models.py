@@ -24,6 +24,7 @@ from src.api.models.itinerary import (
     EventDates,
     ItineraryResponse,
     PointOfInterest,
+    TravelAdvisory,
     WeatherForecast,
 )
 
@@ -565,3 +566,172 @@ class TestItineraryResponse:
         }
         with pytest.raises(ValidationError):
             ItineraryResponse(**data)
+
+
+# ==================================================================
+# TravelAdvisory
+# ==================================================================
+
+class TestTravelAdvisory:
+    """Validate TravelAdvisory model fields and constraints."""
+
+    def test_valid_advisory(self) -> None:
+        """A fully-populated advisory parses without error."""
+        advisory = TravelAdvisory(
+            advisory_level=2,
+            advisory_summary=(
+                "Exercise increased caution in Mexico."
+            ),
+            specific_warnings=[
+                "Violent crime is widespread",
+                "Do not travel to certain states",
+            ],
+            last_updated="2026-02-20",
+            source_url=(
+                "https://travel.state.gov/content/travel/"
+                "en/traveladvisories/mexico.html"
+            ),
+        )
+        assert advisory.advisory_level == 2
+        assert len(advisory.specific_warnings) == 2
+
+    @pytest.mark.parametrize(
+        "level",
+        [1, 2, 3, 4],
+        ids=["level_1", "level_2", "level_3", "level_4"],
+    )
+    def test_advisory_level_accepts_valid_range(
+        self, level: int
+    ) -> None:
+        """Advisory levels 1 through 4 are all valid."""
+        advisory = TravelAdvisory(
+            advisory_level=level,
+            advisory_summary="Test advisory",
+            specific_warnings=["Test warning"],
+            source_url="https://travel.state.gov/test",
+        )
+        assert advisory.advisory_level == level
+
+    @pytest.mark.parametrize(
+        "bad_level",
+        [0, -1, 5, 10, -100],
+        ids=[
+            "zero",
+            "negative",
+            "five",
+            "ten",
+            "large_negative",
+        ],
+    )
+    def test_advisory_level_rejects_out_of_range(
+        self, bad_level: int
+    ) -> None:
+        """Advisory levels outside 1-4 are rejected.
+
+        The State Department only uses a four-level scale.
+        Values outside this range indicate bad data.
+        """
+        with pytest.raises(ValidationError):
+            TravelAdvisory(
+                advisory_level=bad_level,
+                advisory_summary="Test advisory",
+                specific_warnings=["Test warning"],
+                source_url="https://travel.state.gov/test",
+            )
+
+    def test_advisory_level_rejects_non_integer(self) -> None:
+        """Advisory level must be an integer, not a string."""
+        with pytest.raises(ValidationError):
+            TravelAdvisory(
+                advisory_level="high",
+                advisory_summary="Test advisory",
+                specific_warnings=["Test warning"],
+                source_url="https://travel.state.gov/test",
+            )
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "advisory_level",
+            "advisory_summary",
+            "specific_warnings",
+            "source_url",
+        ],
+    )
+    def test_missing_required_field_raises(
+        self, field: str
+    ) -> None:
+        """All non-optional fields are required."""
+        data = {
+            "advisory_level": 1,
+            "advisory_summary": "Test advisory",
+            "specific_warnings": ["Test warning"],
+            "source_url": "https://travel.state.gov/test",
+        }
+        del data[field]
+        with pytest.raises(ValidationError):
+            TravelAdvisory(**data)
+
+    def test_last_updated_optional_none(self) -> None:
+        """``last_updated`` is optional and accepts None."""
+        advisory = TravelAdvisory(
+            advisory_level=1,
+            advisory_summary="Test advisory",
+            specific_warnings=["Test warning"],
+            last_updated=None,
+            source_url="https://travel.state.gov/test",
+        )
+        assert advisory.last_updated is None
+
+    def test_last_updated_optional_absent(self) -> None:
+        """``last_updated`` may be omitted entirely."""
+        advisory = TravelAdvisory(
+            advisory_level=1,
+            advisory_summary="Test advisory",
+            specific_warnings=["Test warning"],
+            source_url="https://travel.state.gov/test",
+        )
+        assert advisory.last_updated is None
+
+    def test_specific_warnings_empty_list_rejected(
+        self,
+    ) -> None:
+        """Empty warnings list is rejected (min_length=1).
+
+        Every advisory should have at least one warning.
+        """
+        with pytest.raises(ValidationError):
+            TravelAdvisory(
+                advisory_level=1,
+                advisory_summary="Test advisory",
+                specific_warnings=[],
+                source_url="https://travel.state.gov/test",
+            )
+
+    def test_destination_accepts_travel_advisory(
+        self, sample_destination: Dict[str, Any]
+    ) -> None:
+        """Destination model accepts optional travel_advisory."""
+        data = deepcopy(sample_destination)
+        data["travel_advisory"] = {
+            "advisory_level": 1,
+            "advisory_summary": "Exercise normal precautions.",
+            "specific_warnings": [
+                "Petty crime in tourist areas"
+            ],
+            "source_url": (
+                "https://travel.state.gov/portugal"
+            ),
+        }
+        dest = Destination(**data)
+        assert dest.travel_advisory is not None
+        assert dest.travel_advisory.advisory_level == 1
+
+    def test_destination_travel_advisory_defaults_none(
+        self, sample_destination: Dict[str, Any]
+    ) -> None:
+        """travel_advisory defaults to None when absent."""
+        data = deepcopy(sample_destination)
+        data.pop("travel_advisory", None)
+        dest = Destination(**data)
+        assert dest.travel_advisory is None

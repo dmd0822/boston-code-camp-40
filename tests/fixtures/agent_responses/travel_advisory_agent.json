@@ -1,0 +1,46 @@
+{
+  "comment": "Mock LLM response for Travel Advisory Agent - State Dept advisory",
+  "advisory_level_1": {
+    "advisory_level": 1,
+    "advisory_summary": "Exercise normal precautions when traveling to Portugal.",
+    "specific_warnings": [
+      "Petty crime such as pickpocketing occurs in tourist areas"
+    ],
+    "last_updated": "2026-01-15",
+    "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/portugal-travel-advisory.html"
+  },
+  "advisory_level_2": {
+    "advisory_level": 2,
+    "advisory_summary": "Exercise increased caution in Mexico due to crime and kidnapping.",
+    "specific_warnings": [
+      "Violent crime such as homicide and kidnapping is widespread",
+      "Do not travel to certain states due to crime and gang activity",
+      "U.S. government employees require special authorization for travel to certain areas"
+    ],
+    "last_updated": "2026-02-20",
+    "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/mexico-travel-advisory.html"
+  },
+  "advisory_level_3": {
+    "advisory_level": 3,
+    "advisory_summary": "Reconsider travel to Pakistan due to terrorism and sectarian violence.",
+    "specific_warnings": [
+      "Terrorist groups continue to plan attacks in Pakistan",
+      "Sectarian violence is common in certain regions",
+      "Anti-Western sentiment may be directed at U.S. citizens"
+    ],
+    "last_updated": "2026-03-01",
+    "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/pakistan-travel-advisory.html"
+  },
+  "advisory_level_4": {
+    "advisory_level": 4,
+    "advisory_summary": "Do not travel to Syria due to terrorism, civil unrest, and armed conflict.",
+    "specific_warnings": [
+      "No U.S. consular services are available in Syria",
+      "Armed conflict and terrorism throughout the country",
+      "Risk of kidnapping, detention, and violence against foreigners",
+      "Unexploded ordnance poses significant risks"
+    ],
+    "last_updated": "2026-01-10",
+    "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/syria-travel-advisory.html"
+  }
+}

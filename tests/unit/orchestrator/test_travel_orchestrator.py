@@ -25,6 +25,7 @@ from src.api.models.itinerary import (
     EventDates,
     ItineraryResponse,
     PointOfInterest,
+    TravelAdvisory,
     WeatherForecast,
 )
 from src.config.settings import Settings
@@ -743,3 +744,316 @@ class TestTravelOrchestrator:
             assert destination.points_of_interest == mock_pois
             assert destination.events == []
             assert destination.weather == mock_weather
+
+
+# ------------------------------------------------------------------
+# Travel Advisory Agent integration tests
+# ------------------------------------------------------------------
+
+
+@pytest.fixture()
+def mock_advisory() -> TravelAdvisory:
+    """Return a mock travel advisory for orchestrator tests."""
+    return TravelAdvisory(
+        advisory_level=1,
+        advisory_summary=(
+            "Exercise normal precautions when traveling "
+            "to Portugal."
+        ),
+        specific_warnings=[
+            "Petty crime such as pickpocketing occurs "
+            "in tourist areas"
+        ],
+        last_updated="2026-01-15",
+        source_url=(
+            "https://travel.state.gov/content/travel/"
+            "en/traveladvisories/traveladvisories/"
+            "portugal-travel-advisory.html"
+        ),
+    )
+
+
+class TestTravelAdvisoryOrchestratorIntegration:
+    """Test Travel Advisory Agent integration in orchestrator.
+
+    Verifies the advisory agent participates in Phase 2
+    concurrent fan-out and that failures degrade gracefully.
+    """
+
+    @pytest.mark.asyncio
+    async def test_advisory_agent_invoked_in_fan_out(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_events: List[Event],
+        mock_weather: WeatherForecast,
+        mock_advisory: TravelAdvisory,
+    ) -> None:
+        """Verify advisory agent called once per destination.
+
+        The orchestrator should invoke get_travel_advisory for
+        each destination returned by the General Agent.
+        """
+        pytest.importorskip(
+            "src.orchestrator.travel_orchestrator"
+        )
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_travel_advisory",
+            new_callable=AsyncMock,
+        ) as mock_advisory_fn:
+            mock_general.return_value = (
+                mock_general_destinations
+            )
+            mock_poi.return_value = mock_pois
+            mock_event.return_value = mock_events
+            mock_weather_fn.return_value = mock_weather
+            mock_advisory_fn.return_value = mock_advisory
+
+            orchestrator = TravelOrchestrator(
+                orchestrator_settings
+            )
+            result = await orchestrator.generate_itinerary(
+                profile
+            )
+
+        assert mock_advisory_fn.call_count == len(
+            mock_general_destinations
+        )
+        assert isinstance(result, ItineraryResponse)
+
+    @pytest.mark.asyncio
+    async def test_advisory_data_appears_in_response(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_events: List[Event],
+        mock_weather: WeatherForecast,
+        mock_advisory: TravelAdvisory,
+    ) -> None:
+        """Verify advisory data populates each destination.
+
+        Each enriched destination should have travel_advisory
+        set to the advisory agent's return value.
+        """
+        pytest.importorskip(
+            "src.orchestrator.travel_orchestrator"
+        )
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_travel_advisory",
+            new_callable=AsyncMock,
+        ) as mock_advisory_fn:
+            mock_general.return_value = (
+                mock_general_destinations
+            )
+            mock_poi.return_value = mock_pois
+            mock_event.return_value = mock_events
+            mock_weather_fn.return_value = mock_weather
+            mock_advisory_fn.return_value = mock_advisory
+
+            orchestrator = TravelOrchestrator(
+                orchestrator_settings
+            )
+            result = await orchestrator.generate_itinerary(
+                profile
+            )
+
+        for dest in result.destinations:
+            assert dest.travel_advisory is not None
+            assert dest.travel_advisory.advisory_level == 1
+            assert (
+                "travel.state.gov"
+                in dest.travel_advisory.source_url
+            )
+
+    @pytest.mark.asyncio
+    async def test_advisory_failure_degrades_gracefully(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_events: List[Event],
+        mock_weather: WeatherForecast,
+    ) -> None:
+        """Verify advisory failure doesn't crash orchestrator.
+
+        If the advisory agent fails, other agents' results
+        should still be returned with travel_advisory=None.
+        """
+        pytest.importorskip(
+            "src.orchestrator.travel_orchestrator"
+        )
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_travel_advisory",
+            new_callable=AsyncMock,
+        ) as mock_advisory_fn:
+            mock_general.return_value = (
+                mock_general_destinations
+            )
+            mock_poi.return_value = mock_pois
+            mock_event.return_value = mock_events
+            mock_weather_fn.return_value = mock_weather
+            mock_advisory_fn.side_effect = (
+                ExternalServiceError(
+                    "Travel advisory agent unavailable"
+                )
+            )
+
+            orchestrator = TravelOrchestrator(
+                orchestrator_settings
+            )
+            result = await orchestrator.generate_itinerary(
+                profile
+            )
+
+        assert isinstance(result, ItineraryResponse)
+        assert len(result.destinations) == len(
+            mock_general_destinations
+        )
+        for dest in result.destinations:
+            assert dest.travel_advisory is None
+            assert dest.points_of_interest == mock_pois
+            assert dest.events == mock_events
+            assert dest.weather == mock_weather
+
+    @pytest.mark.asyncio
+    async def test_advisory_timeout_preserves_other_results(
+        self,
+        sample_customer_profile: Dict[str, Any],
+        orchestrator_settings: Settings,
+        mock_general_destinations: List[Destination],
+        mock_pois: List[PointOfInterest],
+        mock_events: List[Event],
+        mock_weather: WeatherForecast,
+    ) -> None:
+        """Verify advisory timeout doesn't cancel other agents.
+
+        A timeout in the advisory agent should not affect POI,
+        Event, or Weather results.
+        """
+        pytest.importorskip(
+            "src.orchestrator.travel_orchestrator"
+        )
+        from src.orchestrator.travel_orchestrator import (
+            TravelOrchestrator,
+        )
+
+        profile = CustomerProfile(**sample_customer_profile)
+
+        with patch(
+            "src.orchestrator.travel_orchestrator."
+            "recommend_destinations",
+            new_callable=AsyncMock,
+        ) as mock_general, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_points_of_interest",
+            new_callable=AsyncMock,
+        ) as mock_poi, patch(
+            "src.orchestrator.travel_orchestrator."
+            "find_events",
+            new_callable=AsyncMock,
+        ) as mock_event, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_weather_forecast",
+            new_callable=AsyncMock,
+        ) as mock_weather_fn, patch(
+            "src.orchestrator.travel_orchestrator."
+            "get_travel_advisory",
+            new_callable=AsyncMock,
+        ) as mock_advisory_fn:
+            mock_general.return_value = (
+                mock_general_destinations
+            )
+            mock_poi.return_value = mock_pois
+            mock_event.return_value = mock_events
+            mock_weather_fn.return_value = mock_weather
+            mock_advisory_fn.side_effect = (
+                ExternalServiceTimeoutError(
+                    "Travel advisory agent timed out"
+                )
+            )
+
+            orchestrator = TravelOrchestrator(
+                orchestrator_settings
+            )
+            result = await orchestrator.generate_itinerary(
+                profile
+            )
+
+        for dest in result.destinations:
+            assert dest.travel_advisory is None
+            assert dest.points_of_interest == mock_pois
+            assert dest.weather == mock_weather
