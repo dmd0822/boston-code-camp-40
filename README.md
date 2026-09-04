@@ -8,9 +8,10 @@
 
 > **Build personalized travel itineraries using multiple AI agents grounded in web search.**
 
-A FastAPI backend orchestrates five specialized travel agents (General,
-POI, Event, Weather, Travel Advisory) to build grounded itineraries end-to-end. The app
+A FastAPI backend orchestrates six specialized travel agents (General,
+POI, Event, Weather, Travel Advisory, Airlines) to build grounded itineraries end-to-end. The app
 uses Microsoft Agent Framework with Azure AI Foundry Agent Service,
+An Airlines Adapter service (FastAPI microservice) provides flight search and quoting for airline/OTA providers; the Airlines Agent uses this adapter as a tool, enabling the orchestrator to include flight options in generated itineraries.
 authenticates through `DefaultAzureCredential`, ships with a React
 frontend in `src/frontend/`, and deploys to Azure Container Apps with
 Bicep and GitHub Actions.
@@ -55,6 +56,7 @@ checks.
 │ ├─ Event Agent                         │
 │ ├─ Weather Agent                       │
 │ ├─ Travel Advisory Agent               │
+│ ├─ Airlines Agent                      │
 │ └─ Travel Orchestrator                 │
 │                                        │
 │ GET /api/health                        │
@@ -66,6 +68,15 @@ checks.
 │ Agent Service        │  │ Grounding source     │
 │ GPT-4o deployment    │  │ for agent research   │
 └──────────────────────┘  └──────────────────────┘
+
+Additional component:
+
+┌─────────────────────────────┐
+│ Airlines Adapter (FastAPI)  │
+│ - /api/airlines/search      │
+│ - /api/airlines/quote       │
+│ Provider plugins (mock/Amadeus)
+└─────────────────────────────┘
 ```
 
 **Key Principles:**
@@ -247,6 +258,8 @@ boston-code-camp-40/
 
 Build a personalized travel itinerary.
 
+Optional query/body parameter: `include_flights: bool` — when true, the orchestrator will run the Airlines Agent (Phase 2) and include flight options in the response under each destination when relevant.
+
 **Request:**
 ```json
 {
@@ -254,7 +267,8 @@ Build a personalized travel itinerary.
   "interests": ["hiking", "museums", "local cuisine"],
   "budget": "moderate",
   "trip_duration": 7,
-  "travel_style": "adventurous"
+  "travel_style": "adventurous",
+  "include_flights": true
 }
 ```
 
@@ -281,10 +295,52 @@ Build a personalized travel itinerary.
         "specific_warnings": ["Standard travel safety measures apply"],
         "last_updated": "2026-03-01",
         "source_url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/canada-travel-advisory.html"
-      }
+      },
+      "flights": [
+        {
+          "provider": "mock_provider",
+          "outbound": { "flight_id": "MCK123", "carrier": "MockAir", "depart": "2026-06-01T08:00:00", "arrive": "2026-06-01T12:45:00" },
+          "return": null,
+          "total_fare": 450.00,
+          "currency": "USD",
+          "booking_url": "https://mock-booking/quote/MCK123"
+        }
+      ]
     }
   ],
   "generated_at": "2026-03-12T10:30:00Z"
+}
+```
+
+### `POST /api/airlines/search`
+
+Search for available flights between an origin and destination. This is implemented by the Airlines Adapter service and used by the Airlines Agent.
+
+**Request:**
+```json
+{
+  "origin": "BOS",
+  "destination": "YYC",
+  "depart_date": "2026-06-01",
+  "return_date": "2026-06-08",
+  "passengers": 1,
+  "cabin": "economy"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "options": [
+    {
+      "provider": "mock_provider",
+      "flight_id": "MCK123",
+      "legs": [ { "carrier": "MockAir", "depart": "2026-06-01T08:00:00", "arrive": "2026-06-01T12:45:00" } ],
+      "total_fare": 450.00,
+      "currency": "USD",
+      "provider_meta": {}
+    }
+  ]
 }
 ```
 

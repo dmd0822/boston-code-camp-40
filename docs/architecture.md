@@ -100,15 +100,22 @@ src/
 │   ├── event_agent.py          # Event / festival agent
 │   ├── weather_agent.py        # Historical weather agent
 │   ├── travel_advisory_agent.py # Travel advisory lookup agent
+│   ├── airlines_agent.py       # Airlines agent (flight recommendations)
 │   └── tools/                  # Shared tools available to agents
 │       ├── __init__.py
 │       └── web_search.py       # Bing Web Search tool wrapper
+├── adapters/                   # External provider adapters
+│   └── airlines/               # Airlines adapter service / provider plugins
+│       ├── __init__.py
+│       ├── mock_provider.py
+│       └── amadeus_provider.py
 ├── api/                        # FastAPI application
 │   ├── __init__.py
 │   ├── app.py                  # FastAPI app factory
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── itinerary.py        # POST /api/itinerary
+│   │   ├── airlines.py         # POST /api/airlines/search, /api/airlines/quote
 │   │   └── health.py           # GET /api/health
 │   └── models/                 # Pydantic request/response schemas
 │       ├── __init__.py
@@ -116,10 +123,10 @@ src/
 │       └── itinerary.py        # Itinerary response schema
 ├── orchestrator/               # Agent orchestration logic
 │   ├── __init__.py
-│   └── travel_orchestrator.py  # Wires General → fan-out → fan-in
+│   └── travel_orchestrator.py  # Wires General → fan-out → fan-in (includes Airlines agent in Phase 2)
 ├── config/                     # App configuration
 │   ├── __init__.py
-│   └── settings.py             # Pydantic Settings (env vars)
+│   └── settings.py             # Pydantic Settings (env vars, Key Vault integration)
 └── README.md
 ```
 
@@ -222,6 +229,29 @@ agent — it is deterministic control flow that invokes agents.
 | **Tools** | `search_web` — searches "U.S. State Department travel advisory {destination} {country}" |
 | **Grounding Strategy** | Searches for official State Department advisories. Uses the four-level scale: 1=Normal Precautions, 2=Increased Caution, 3=Reconsider Travel, 4=Do Not Travel. If no advisory is found, returns `null`. |
 | **Hallucination Controls** | 1) Must cite State Department URL. 2) System prompt: "Only return advisories from official U.S. State Department sources. Return null if no advisory can be found. Never fabricate advisory levels or warnings." |
+
+### 3.6 Airlines Agent & Airlines Adapter
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Recommend flight legs and present purchasable flight options/quotes for itinerary destinations. Offer provider-agnostic FlightOption objects with fares and booking links (or quote tokens). |
+| **Input** | `Destination` (name, country), `CustomerProfile` (departure city, travel dates, passengers, cabin preference) |
+| **Output** | `FlightOption` — outbound/return leg details, carrier, flight times, total_fare, currency, provider_id, booking_url or quote_token, provider_meta |
+| **System Prompt** | `data/prompts/airlines-agent/system.md` (new) — require searching adapter results and never invent flight identifiers |
+| **Tools** | `airlines_adapter` — local FastAPI adapter service that exposes `/api/airlines/search` and `/api/airlines/quote`. Adapter implements provider plugins (mock, Amadeus, etc.) and a short-TTL cache for search results. |
+| **Grounding Strategy** | The Airlines Agent MUST call the `airlines_adapter` tool for any flight data. The adapter returns only surfaced flight options discovered via provider APIs or mocked responses. The agent reasons over adapter results to select or rank options for the itinerary. |
+| **Hallucination Controls** | 1) Adapter-sourced data only — agents may not fabricate flight IDs, times, or fares. 2) Output schema validation (Pydantic). 3) If adapter returns no options, agent returns an explicit `no_flights` marker rather than fabricate options. |
+
+Adapter design notes:
+- Adapter runs as a companion FastAPI service (`src/adapters/airlines/`) or inline library during MVP.
+- Endpoints:
+  - `POST /api/airlines/search` — Request: { origin, destination, depart_date, return_date?, passengers, cabin }
+  - `POST /api/airlines/quote` — Request: { provider_id, flight_id } → returns fare breakdown and booking_url/quote_token
+- Auth & Secrets: Provider credentials live in Azure Key Vault; adapter uses `DefaultAzureCredential` to fetch secrets in Azure and reads local env vars during dev.
+- Caching: Short TTL (e.g., 5–15 minutes) for search results; token caching for provider tokens.
+- Mock provider: Start with `mock_provider.py` that returns deterministic FlightOption objects for end-to-end testing without external API keys.
+
+---
 
 ### Shared Anti-Hallucination Pattern
 
