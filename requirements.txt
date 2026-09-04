@@ -23,6 +23,9 @@ pytest-asyncio
 ruff
 
 # Microsoft Agent Framework
+# agent-framework-azure-ai is imported lazily inside agent creation functions
+# to avoid transitive import conflicts between the Azure AI provider package
+# and the underlying agent-framework-core stable releases.
 agent-framework
 agent-framework-azure-ai
 agent-framework-orchestrations

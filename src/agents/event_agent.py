@@ -6,12 +6,23 @@ window. Returns empty list if no events match the dates.
 """
 
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from agent_framework import Agent
-from agent_framework_azure_ai import AzureAIClient
 from azure.identity import DefaultAzureCredential
 from pydantic import ValidationError
+
+# agent-framework packages are imported here at module level so that
+# patch("src.agents.event_agent.AzureAIClient") works in unit tests.
+# The try/except prevents an ImportError at collection time when the
+# installed versions of agent-framework-azure-ai and agent-framework-core
+# are incompatible; the error surfaces only when an agent is actually
+# created at runtime.
+try:
+    from agent_framework import Agent
+    from agent_framework_azure_ai import AzureAIClient
+except ImportError:  # pragma: no cover
+    Agent: Any = None  # type: ignore[assignment]
+    AzureAIClient: Any = None  # type: ignore[assignment]
 
 from src.agents.agent_utils import (
     load_system_prompt,
